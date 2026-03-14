@@ -230,70 +230,26 @@ export default function AdminPage() {
 
     setSaving('recap')
 
-    try {
-      const bodyLength = recapBody.trim().length
-      console.log('Attempting recap insert...', { title: recapTitle.trim(), date: recapDate, bodyLength })
-
-      // Get auth token — required for the REST API call
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        showMsg('error', 'Not authenticated. Please sign in again.')
-        setSaving(null)
-        return
-      }
-
-      // Use raw fetch + AbortController instead of the Supabase JS client.
-      // The JS client's .insert().select() sends "Prefer: return=representation"
-      // which asks Supabase to write AND immediately read back the full large body
-      // in a single response — that response hangs for long text.
-      // "return=minimal" tells Supabase to only confirm the insert (201, no body).
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 30000)
-
-      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL!
-      const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY!
-
-      const response = await fetch(`${supabaseUrl}/rest/v1/recaps`, {
-        method: 'POST',
-        signal: controller.signal,
-        headers: {
-          'apikey': supabaseAnonKey,
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal',
-        },
-        body: JSON.stringify({
-          title: cleanText(recapTitle.trim()),
-          body: cleanText(recapBody.trim()),
-          game_date: recapDate,
-          image_urls: [],
-        }),
+    // .insert() without .select() uses Prefer:return=minimal — no response body,
+    // so it never hangs regardless of how long the text is.
+    const { error } = await supabase
+      .from('recaps')
+      .insert({
+        title: cleanText(recapTitle.trim()),
+        body: cleanText(recapBody.trim()),
+        game_date: recapDate,
+        image_urls: [],
       })
 
-      clearTimeout(timeoutId)
-      console.log('Insert response status:', response.status)
-
-      if (!response.ok) {
-        const errText = await response.text()
-        console.error('Insert failed:', errText)
-        let errMsg = 'Failed to save recap.'
-        try { errMsg = JSON.parse(errText)?.message || errText } catch {}
-        showMsg('error', errMsg)
-      } else {
-        showMsg('success', 'Recap posted!')
-        setRecapTitle('')
-        setRecapBody('')
-        setRecapImageUrls(['', '', ''])
-        setRecapDate(new Date().toISOString().split('T')[0])
-        await fetchData()
-      }
-    } catch (err: any) {
-      console.error('Caught error:', err)
-      if (err.name === 'AbortError') {
-        showMsg('error', 'Request timed out after 30s — the server may still have saved it. Refresh to check.')
-      } else {
-        showMsg('error', 'Error: ' + err.message)
-      }
+    if (error) {
+      showMsg('error', error.message)
+    } else {
+      showMsg('success', 'Recap posted!')
+      setRecapTitle('')
+      setRecapBody('')
+      setRecapImageUrls(['', '', ''])
+      setRecapDate(new Date().toISOString().split('T')[0])
+      await fetchData()
     }
 
     setSaving(null)
