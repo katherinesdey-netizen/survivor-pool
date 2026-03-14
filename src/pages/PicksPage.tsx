@@ -33,6 +33,7 @@ export default function PicksPage() {
   const [todayInfo, setTodayInfo] = useState<TournamentDay | null>(null)
   const [existingPicks, setExistingPicks] = useState<ExistingPick[]>([])
   const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([])
+  const [savedTeamIds, setSavedTeamIds] = useState<number[]>([]) // what's actually in the DB
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState<{type: 'success'|'error', text: string} | null>(null)
@@ -41,7 +42,6 @@ export default function PicksPage() {
   useEffect(() => {
     if (!participant) return
     fetchData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [participant])
 
   async function fetchData() {
@@ -84,6 +84,7 @@ export default function PicksPage() {
     // Pre-select any picks already submitted for today
     const todayPicks = (allPicks || []).filter(p => p.game_date === day.game_date)
     setSelectedTeamIds(todayPicks.map(p => p.team_id))
+    setSavedTeamIds(todayPicks.map(p => p.team_id))
 
     setLoading(false)
   }
@@ -179,6 +180,7 @@ export default function PicksPage() {
     if (error) {
       setSaveMsg({ type: 'error', text: 'Something went wrong saving your picks. Please try again.' })
     } else {
+      setSavedTeamIds([...selectedTeamIds]) // mark current selection as saved
       setSaveMsg({ type: 'success', text: '✅ Picks saved! To change them, uncheck a team below and select a different one. Your most recent submission counts.' })
       await fetchData()
     }
@@ -214,6 +216,14 @@ export default function PicksPage() {
   const picksSelected = selectedTeamIds.length
   const picksRemaining = picksRequired - picksSelected
 
+  // Check if current selection matches what's saved in DB
+  const selectionMatchesSaved = 
+    picksSelected === savedTeamIds.length &&
+    selectedTeamIds.every(id => savedTeamIds.includes(id))
+
+  // Only show counter/save button if selection has changed from saved state
+  const showActionBar = !deadlinePassed && !selectionMatchesSaved
+
   return (
     <div className="picks-page">
       {/* Header */}
@@ -242,7 +252,12 @@ export default function PicksPage() {
       )}
 
       {/* Pick counter + save */}
-      {!deadlinePassed ? (
+      {!deadlinePassed && savedTeamIds.length === picksRequired && !showActionBar && (
+        <div className="picks-saved-banner">
+          ✅ Picks saved! Deselect a team below to make a change.
+        </div>
+      )}
+      {showActionBar ? (
         <div className="picks-action-bar">
           <div className="pick-counter">
             {picksSelected === picksRequired ? (
@@ -259,7 +274,7 @@ export default function PicksPage() {
             {saving ? 'Saving...' : 'Save Picks'}
           </button>
         </div>
-      ) : (
+      ) : deadlinePassed ? (
         <div className="picks-locked-banner">
           🔒 Picks are locked for this day.
           {selectedTeamIds.length > 0
@@ -267,7 +282,7 @@ export default function PicksPage() {
             : ' No picks were submitted — Adam will assign your pick automatically.'
           }
         </div>
-      )}
+      ) : null}
 
       {/* Save message */}
       {saveMsg && (

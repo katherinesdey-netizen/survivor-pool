@@ -31,7 +31,6 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!participant) return
     fetchData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [participant])
 
   async function fetchData() {
@@ -226,20 +225,19 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+      </div>
 
-        <div className="dashboard-sidebar">
-          <div className="rules-card">
-            <h3>📋 Pool Rules</h3>
-            <ul>
-              <li>Pick <strong>2 teams</strong> on Thursday & Friday (Round of 64), <strong>1 team</strong> all other days</li>
-              <li>If your pick loses, you're <strong>eliminated</strong></li>
-              <li>You <strong>cannot pick the same team twice</strong></li>
-              <li>Picks must be submitted <strong>30 min before first tip</strong></li>
-              <li>Miss a deadline? You get <strong>auto-assigned the worst available seed</strong></li>
-              <li>Last person standing wins <strong>the pot</strong></li>
-            </ul>
-          </div>
-        </div>
+      {/* Rules — full width below */}
+      <div className="rules-card">
+        <h3>📋 Pool Rules</h3>
+        <ul>
+          <li>Pick <strong>2 teams</strong> on Thursday & Friday (Round of 64), <strong>1 team</strong> all other days</li>
+          <li>If your pick loses, you're <strong>eliminated</strong></li>
+          <li>You <strong>cannot pick the same team twice</strong></li>
+          <li>Picks must be submitted <strong>30 min before first tip</strong></li>
+          <li>Miss a deadline? You get <strong>auto-assigned the worst available seed</strong></li>
+          <li>Last person standing wins <strong>the pot</strong></li>
+        </ul>
       </div>
     </div>
   )

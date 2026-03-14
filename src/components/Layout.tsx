@@ -22,7 +22,7 @@ export default function Layout() {
           </div>
           <nav className="header-nav">
             <NavLink to="/dashboard" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>
-              My Status
+              Headquarters
             </NavLink>
             <NavLink to="/picks" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>
               Picks
