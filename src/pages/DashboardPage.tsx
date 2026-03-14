@@ -40,6 +40,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!participant) return
     fetchData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [participant])
 
   async function fetchData() {
@@ -254,7 +255,8 @@ export default function DashboardPage() {
               </div>
               <h3 className="recap-card-title">{latestRecap.title}</h3>
               <div className="recap-card-body">
-                {latestRecap.body.slice(0, 300)}{latestRecap.body.length > 300 ? '...' : ''}
+                {latestRecap.body.replace(/\[img:[^\]]+\]/g, '').slice(0, 300)}
+                {latestRecap.body.replace(/\[img:[^\]]+\]/g, '').length > 300 ? '...' : ''}
               </div>
               {latestRecap.image_urls?.[0] && (
                 <img

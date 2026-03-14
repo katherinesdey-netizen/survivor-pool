@@ -72,7 +72,7 @@ export default function AdminPage() {
   const [recapTitle, setRecapTitle] = useState('')
   const [recapBody, setRecapBody] = useState('')
   const [recapDate, setRecapDate] = useState(new Date().toISOString().split('T')[0])
-  const [recapImageUrls, setRecapImageUrls] = useState(['', '', ''])
+  const [recapImageUrls, setRecapImageUrls] = useState(['', '', '']) // eslint-disable-line @typescript-eslint/no-unused-vars
 
   useEffect(() => { fetchData() }, [])
 
@@ -149,13 +149,6 @@ export default function AdminPage() {
     setSaving(null)
   }
 
-  async function deletePick(pickId: number) {
-    if (!window.confirm('Delete this pick?')) return
-    const { error } = await supabase.from('picks').delete().eq('id', pickId)
-    if (error) showMsg('error', 'Failed to delete pick.')
-    else showMsg('success', 'Pick deleted.')
-    await fetchData()
-  }
 
   async function updatePickResult(pickId: number, result: string) {
     const { error } = await supabase.from('picks').update({ result }).eq('id', pickId)
@@ -214,6 +207,15 @@ export default function AdminPage() {
     setSaving(null)
   }
 
+  function cleanText(text: string): string {
+    return text
+      .replace(/[\u2018\u2019]/g, "'")   // curly single quotes → straight
+      .replace(/[\u201C\u201D]/g, '"')   // curly double quotes → straight
+      .replace(/\u2013/g, '-')           // en dash → hyphen
+      .replace(/\u2014/g, '--')          // em dash → double hyphen
+      .replace(/\u2026/g, '...')         // ellipsis → three dots
+  }
+
   function formatDate(dateStr: string) {
     return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', {
       month: 'short', day: 'numeric'
@@ -222,27 +224,78 @@ export default function AdminPage() {
 
   async function handleSaveRecap(e: React.FormEvent) {
     e.preventDefault()
-    if (!recapTitle.trim() || !recapBody.trim()) return
+    if (!recapTitle.trim()) { showMsg('error', 'Please enter a title.'); return }
+    if (!recapBody.trim()) { showMsg('error', 'Please enter a recap body.'); return }
+    if (!recapDate) { showMsg('error', 'Please select a date.'); return }
+
     setSaving('recap')
 
-    const imageUrls = recapImageUrls.filter(u => u.trim())
+    try {
+      const bodyLength = recapBody.trim().length
+      console.log('Attempting recap insert...', { title: recapTitle.trim(), date: recapDate, bodyLength })
 
-    const { error } = await supabase.from('recaps').insert({
-      title: recapTitle.trim(),
-      body: recapBody.trim(),
-      game_date: recapDate,
-      image_urls: imageUrls
-    })
+      // Get auth token — required for the REST API call
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        showMsg('error', 'Not authenticated. Please sign in again.')
+        setSaving(null)
+        return
+      }
 
-    if (error) showMsg('error', 'Failed to save recap: ' + error.message)
-    else {
-      showMsg('success', 'Recap posted!')
-      setRecapTitle('')
-      setRecapBody('')
-      setRecapImageUrls(['', '', ''])
-      setRecapDate(new Date().toISOString().split('T')[0])
-      await fetchData()
+      // Use raw fetch + AbortController instead of the Supabase JS client.
+      // The JS client's .insert().select() sends "Prefer: return=representation"
+      // which asks Supabase to write AND immediately read back the full large body
+      // in a single response — that response hangs for long text.
+      // "return=minimal" tells Supabase to only confirm the insert (201, no body).
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000)
+
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL!
+      const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY!
+
+      const response = await fetch(`${supabaseUrl}/rest/v1/recaps`, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify({
+          title: cleanText(recapTitle.trim()),
+          body: cleanText(recapBody.trim()),
+          game_date: recapDate,
+          image_urls: [],
+        }),
+      })
+
+      clearTimeout(timeoutId)
+      console.log('Insert response status:', response.status)
+
+      if (!response.ok) {
+        const errText = await response.text()
+        console.error('Insert failed:', errText)
+        let errMsg = 'Failed to save recap.'
+        try { errMsg = JSON.parse(errText)?.message || errText } catch {}
+        showMsg('error', errMsg)
+      } else {
+        showMsg('success', 'Recap posted!')
+        setRecapTitle('')
+        setRecapBody('')
+        setRecapImageUrls(['', '', ''])
+        setRecapDate(new Date().toISOString().split('T')[0])
+        await fetchData()
+      }
+    } catch (err: any) {
+      console.error('Caught error:', err)
+      if (err.name === 'AbortError') {
+        showMsg('error', 'Request timed out after 30s — the server may still have saved it. Refresh to check.')
+      } else {
+        showMsg('error', 'Error: ' + err.message)
+      }
     }
+
     setSaving(null)
   }
 
@@ -506,37 +559,24 @@ export default function AdminPage() {
                 <input
                   type="text"
                   value={recapTitle}
-                  onChange={e => setRecapTitle(e.target.value)}
+                  onChange={e => setRecapTitle(cleanText(e.target.value))}
                   placeholder="Day 1: Chaos Reigns"
                   required
                 />
               </div>
               <div className="assign-field">
-                <label>Recap <span style={{fontWeight:400, color:'rgba(255,255,255,0.35)'}}>— use **bold** for emphasis, press Enter for new paragraphs</span></label>
+                <label>Recap <span style={{fontWeight:400, color:'rgba(255,255,255,0.35)'}}>— use **bold** for emphasis, new lines for paragraphs</span></label>
+                <div className="recap-img-hint">
+                  To add an image or GIF inline, put it on its own line like this:<br/>
+                  <code>[img:https://media.giphy.com/your-gif-url.gif]</code>
+                </div>
                 <textarea
                   value={recapBody}
-                  onChange={e => setRecapBody(e.target.value)}
-                  placeholder="Write the day's recap here..."
-                  rows={10}
+                  onChange={e => setRecapBody(cleanText(e.target.value))}
+                  placeholder={`Duke came out firing today.\n\n[img:https://media.giphy.com/xxx.gif]\n\nMeanwhile on the other side of the bracket...`}
+                  rows={12}
                   required
                 />
-              </div>
-              <div className="assign-field">
-                <label>Image / GIF URLs <span style={{fontWeight:400, color:'rgba(255,255,255,0.35)'}}>— paste direct image links (optional)</span></label>
-                {recapImageUrls.map((url, i) => (
-                  <input
-                    key={i}
-                    type="url"
-                    value={url}
-                    onChange={e => {
-                      const updated = [...recapImageUrls]
-                      updated[i] = e.target.value
-                      setRecapImageUrls(updated)
-                    }}
-                    placeholder={`Image URL ${i + 1}`}
-                    style={{ marginBottom: '8px' }}
-                  />
-                ))}
               </div>
               <button type="submit" className="btn-primary" disabled={saving === 'recap'}>
                 {saving === 'recap' ? 'Posting...' : '📝 Post Recap'}
