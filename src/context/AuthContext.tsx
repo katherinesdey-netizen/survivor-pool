@@ -1,0 +1,87 @@
+import React, { createContext, useContext, useEffect, useState } from 'react'
+import { User, Session } from '@supabase/supabase-js'
+import { supabase } from '../lib/supabase'
+
+interface Participant {
+  id: string
+  email: string
+  full_name: string
+  venmo_handle: string | null
+  is_paid: boolean
+  is_admin: boolean
+  is_eliminated: boolean
+  eliminated_on_date: string | null
+}
+
+interface AuthContextType {
+  user: User | null
+  session: Session | null
+  participant: Participant | null
+  loading: boolean
+  signOut: () => Promise<void>
+  refreshParticipant: () => Promise<void>
+}
+
+const AuthContext = createContext<AuthContextType>({} as AuthContextType)
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [session, setSession] = useState<Session | null>(null)
+  const [participant, setParticipant] = useState<Participant | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  async function fetchParticipant(userId: string) {
+    const { data } = await supabase
+      .from('participants')
+      .select('*')
+      .eq('id', userId)
+      .single()
+    setParticipant(data)
+  }
+
+  async function refreshParticipant() {
+    if (user) await fetchParticipant(user.id)
+  }
+
+  async function signOut() {
+    await supabase.auth.signOut()
+    setUser(null)
+    setSession(null)
+    setParticipant(null)
+  }
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      setUser(session?.user ?? null)
+      if (session?.user) {
+        fetchParticipant(session.user.id).finally(() => setLoading(false))
+      } else {
+        setLoading(false)
+      }
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        setSession(session)
+        setUser(session?.user ?? null)
+        if (session?.user) {
+          await fetchParticipant(session.user.id)
+        } else {
+          setParticipant(null)
+        }
+        setLoading(false)
+      }
+    )
+
+    return () => subscription.unsubscribe()
+  }, []) // eslint-disable-line
+
+  return (
+    <AuthContext.Provider value={{ user, session, participant, loading, signOut, refreshParticipant }}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+export const useAuth = () => useContext(AuthContext)

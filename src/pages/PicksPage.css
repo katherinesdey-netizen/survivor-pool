@@ -1,0 +1,262 @@
+.picks-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 800px;
+}
+
+.picks-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.picks-round {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ff6b00;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+.picks-date {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 36px;
+  color: #fff;
+  margin: 0;
+  letter-spacing: 1px;
+}
+
+.picks-deadline-box { text-align: right; }
+
+.deadline-label {
+  font-size: 11px;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 4px;
+}
+
+.deadline-value {
+  font-size: 14px;
+  color: rgba(255,255,255,0.7);
+}
+
+.deadline-value.passed { color: #f87171; }
+
+/* Warning */
+.warning-card {
+  background: rgba(255,180,0,0.08);
+  border: 1px solid rgba(255,180,0,0.25);
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  font-size: 14px;
+  color: rgba(255,255,255,0.7);
+  line-height: 1.5;
+}
+
+.warning-card strong { color: #ffd700; display: block; margin-bottom: 4px; }
+.warning-card p { margin: 0; }
+
+/* Action bar */
+.picks-action-bar {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.pick-counter { font-size: 15px; }
+
+.counter-ready { color: #4ade80; font-weight: 500; }
+.counter-pending { color: rgba(255,255,255,0.5); }
+
+.btn-save {
+  background: #ff6b00;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.btn-save:hover:not(:disabled) { background: #e55f00; }
+.btn-save:active:not(:disabled) { transform: scale(0.98); }
+.btn-save:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Save message */
+.save-msg {
+  border-radius: 10px;
+  padding: 14px 18px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.save-msg.success {
+  background: rgba(74,222,128,0.1);
+  border: 1px solid rgba(74,222,128,0.25);
+  color: #4ade80;
+}
+
+.save-msg.error {
+  background: rgba(248,113,113,0.1);
+  border: 1px solid rgba(248,113,113,0.25);
+  color: #f87171;
+}
+
+/* Search */
+.team-search {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  padding: 11px 16px;
+  font-size: 14px;
+  color: #fff;
+  font-family: 'DM Sans', sans-serif;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.2s;
+}
+
+.team-search:focus { border-color: #ff6b00; }
+.team-search::placeholder { color: rgba(255,255,255,0.25); }
+
+/* Regions */
+.region-section { }
+
+.region-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 20px;
+  color: rgba(255,255,255,0.4);
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+}
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+/* Team buttons */
+.team-btn {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+  font-family: 'DM Sans', sans-serif;
+  position: relative;
+}
+
+.team-btn:hover:not(:disabled):not(.used) {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.2);
+}
+
+.team-btn.selected {
+  background: rgba(255,107,0,0.15);
+  border-color: rgba(255,107,0,0.5);
+}
+
+.team-btn.used {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.team-btn.locked {
+  cursor: default;
+}
+
+.team-seed {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.35);
+  min-width: 28px;
+}
+
+.team-btn.selected .team-seed { color: #ff6b00; }
+
+.team-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  flex: 1;
+}
+
+.team-check {
+  color: #ff6b00;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.team-used {
+  font-size: 10px;
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.4);
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.team-removed {
+  font-size: 10px;
+  background: rgba(248,113,113,0.15);
+  color: #f87171;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* No games */
+.no-games-card {
+  text-align: center;
+  padding: 80px 40px;
+  color: rgba(255,255,255,0.5);
+}
+
+.no-games-card h2 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  color: #fff;
+  margin-bottom: 10px;
+  letter-spacing: 1px;
+}
+
+@media (max-width: 600px) {
+  .picks-date { font-size: 28px; }
+  .team-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  .picks-action-bar { flex-direction: column; align-items: stretch; }
+  .btn-save { text-align: center; }
+}
+
+.picks-locked-banner {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  padding: 14px 18px;
+  font-size: 14px;
+  color: rgba(255,255,255,0.45);
+}
