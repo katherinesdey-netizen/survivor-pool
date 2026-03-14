@@ -51,6 +51,8 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
   const [msg, setMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshLog, setRefreshLog] = useState<string[] | null>(null)
 
   // Assign pick form state
   const [assignParticipantId, setAssignParticipantId] = useState('')
@@ -78,6 +80,25 @@ export default function AdminPage() {
   function showMsg(type: 'success' | 'error', text: string) {
     setMsg({ type, text })
     setTimeout(() => setMsg(null), 4000)
+  }
+
+  async function refreshResults() {
+    setRefreshing(true)
+    setRefreshLog(null)
+    try {
+      const res = await fetch('/api/update-results', { method: 'POST' })
+      const data = await res.json()
+      setRefreshLog(data.log || [])
+      if (data.success) {
+        showMsg('success', `Results updated — ${data.gamesProcessed} games processed, ${data.picksUpdated} picks updated.`)
+        await fetchData()
+      } else {
+        showMsg('error', `Error: ${data.error}`)
+      }
+    } catch (err) {
+      showMsg('error', 'Failed to reach update function. Is it deployed?')
+    }
+    setRefreshing(false)
   }
 
   async function togglePaid(participant: Participant) {
@@ -110,6 +131,13 @@ export default function AdminPage() {
     setSaving(null)
   }
 
+  async function deletePick(pickId: number) {
+    if (!window.confirm('Delete this pick?')) return
+    const { error } = await supabase.from('picks').delete().eq('id', pickId)
+    if (error) showMsg('error', 'Failed to delete pick.')
+    else showMsg('success', 'Pick deleted.')
+    await fetchData()
+  }
 
   async function updatePickResult(pickId: number, result: string) {
     const { error } = await supabase.from('picks').update({ result }).eq('id', pickId)
@@ -194,10 +222,30 @@ export default function AdminPage() {
             <span>${paidCount * 25} pot</span>
           </div>
         </div>
-        <button className="refresh-btn" onClick={fetchData}>↻ Refresh</button>
+        <div className="admin-header-btns">
+          <button className="refresh-btn" onClick={fetchData}>↻ Refresh Data</button>
+          <button 
+            className="refresh-results-btn" 
+            onClick={refreshResults}
+            disabled={refreshing}
+          >
+            {refreshing ? '⏳ Checking ESPN...' : '🏀 Fetch Game Results'}
+          </button>
+        </div>
       </div>
 
       {msg && <div className={`admin-msg ${msg.type}`}>{msg.text}</div>}
+
+      {/* Results log */}
+      {refreshLog && (
+        <div className="refresh-log">
+          <div className="refresh-log-title">Result Update Log</div>
+          {refreshLog.map((line, i) => (
+            <div key={i} className="refresh-log-line">{line}</div>
+          ))}
+          <button className="refresh-log-close" onClick={() => setRefreshLog(null)}>✕ Close</button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="admin-tabs">
