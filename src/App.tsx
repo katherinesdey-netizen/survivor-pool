@@ -7,6 +7,8 @@ import DashboardPage from './pages/DashboardPage'
 import AdminPage from './pages/AdminPage'
 import StandingsPage from './pages/StandingsPage'
 import PicksPage from './pages/PicksPage'
+import RecapsPage from './pages/RecapsPage'
+import RulesPage from './pages/RulesPage'
 import Layout from './components/Layout'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -35,6 +37,8 @@ export default function App() {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="picks" element={<PicksPage />} />
             <Route path="standings" element={<StandingsPage />} />
+            <Route path="recaps" element={<RecapsPage />} />
+            <Route path="rules" element={<RulesPage />} />
             <Route path="admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
           </Route>
         </Routes>

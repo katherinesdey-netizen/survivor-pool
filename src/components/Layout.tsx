@@ -30,6 +30,12 @@ export default function Layout() {
             <NavLink to="/standings" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>
               Standings
             </NavLink>
+            <NavLink to="/recaps" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>
+              Recaps
+            </NavLink>
+            <NavLink to="/rules" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>
+              Rules
+            </NavLink>
             {participant?.is_admin && (
               <NavLink to="/admin" className={({isActive}) => isActive ? 'nav-link admin-link active' : 'nav-link admin-link'}>
                 Admin

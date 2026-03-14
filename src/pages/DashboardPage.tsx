@@ -20,12 +20,21 @@ interface TournamentDay {
   is_complete: boolean
 }
 
+interface Recap {
+  id: number
+  title: string
+  body: string
+  image_urls: string[]
+  game_date: string
+}
+
 export default function DashboardPage() {
   const { participant } = useAuth()
   const [picks, setPicks] = useState<Pick[]>([])
   const [todayInfo, setTodayInfo] = useState<TournamentDay | null>(null)
   const [todayPickCount, setTodayPickCount] = useState(0)
   const [totalPot, setTotalPot] = useState(0)
+  const [latestRecap, setLatestRecap] = useState<Recap | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -74,6 +83,16 @@ export default function DashboardPage() {
       .eq('is_paid', true)
 
     setTotalPot((paidCount || 0) * 25)
+
+    // Fetch latest recap
+    const { data: recapData } = await supabase
+      .from('recaps')
+      .select('*')
+      .order('game_date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    setLatestRecap(recapData)
     setLoading(false)
   }
 
@@ -193,9 +212,9 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Two column layout: pick history + rules */}
-      <div className="dashboard-columns">
-        <div className="dashboard-main">
+      {/* Two column layout: pick history left, recap right */}
+      <div className="dashboard-bottom">
+        <div className="dashboard-left">
           <h2 className="section-title">Your Pick History</h2>
           {picks.length === 0 ? (
             <div className="empty-state">
@@ -225,19 +244,35 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+
+        {latestRecap && (
+          <div className="dashboard-right">
+            <div className="dashboard-recap-card">
+              <div className="recap-day-label">📝 Latest Recap</div>
+              <div className="recap-date-label">
+                {new Date(latestRecap.game_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </div>
+              <h3 className="recap-card-title">{latestRecap.title}</h3>
+              <div className="recap-card-body">
+                {latestRecap.body.slice(0, 300)}{latestRecap.body.length > 300 ? '...' : ''}
+              </div>
+              {latestRecap.image_urls?.[0] && (
+                <img
+                  src={latestRecap.image_urls[0]}
+                  alt="Recap"
+                  className="recap-card-image"
+                  onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                />
+              )}
+              <Link to="/recaps" className="recap-read-more">Read full recap →</Link>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Rules — full width below */}
-      <div className="rules-card">
-        <h3>📋 Pool Rules</h3>
-        <ul>
-          <li>Pick <strong>2 teams</strong> on Thursday & Friday (Round of 64), <strong>1 team</strong> all other days</li>
-          <li>If your pick loses, you're <strong>eliminated</strong></li>
-          <li>You <strong>cannot pick the same team twice</strong></li>
-          <li>Picks must be submitted <strong>30 min before first tip</strong></li>
-          <li>Miss a deadline? You get <strong>auto-assigned the worst available seed</strong></li>
-          <li>Last person standing wins <strong>the pot</strong></li>
-        </ul>
+      {/* Rules link */}
+      <div className="rules-link-bar">
+        📋 <Link to="/rules">View full pool rules</Link>
       </div>
     </div>
   )

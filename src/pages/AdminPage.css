@@ -418,3 +418,105 @@
   font-family: 'DM Sans', sans-serif;
   cursor: pointer;
 }
+
+/* Recaps admin tab */
+.recaps-admin-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.recap-form-section, .recap-list-section { }
+
+.recap-form-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  color: #fff;
+  letter-spacing: 0.5px;
+  margin-bottom: 16px;
+}
+
+.recap-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 600px;
+}
+
+.recap-form textarea {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  color: #fff;
+  font-size: 14px;
+  padding: 12px 14px;
+  font-family: 'DM Sans', sans-serif;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.recap-form textarea:focus {
+  outline: none;
+  border-color: #ff6b00;
+}
+
+.recap-form input[type="text"],
+.recap-form input[type="url"],
+.recap-form input[type="date"] {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  color: #fff;
+  font-size: 14px;
+  padding: 11px 14px;
+  font-family: 'DM Sans', sans-serif;
+  width: 100%;
+}
+
+.recap-form input:focus {
+  outline: none;
+  border-color: #ff6b00;
+}
+
+/* Posted recaps list */
+.recap-admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.recap-admin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.recap-admin-info { flex: 1; min-width: 0; }
+
+.recap-admin-date {
+  font-size: 11px;
+  color: #ff6b00;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 4px;
+}
+
+.recap-admin-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.recap-admin-preview {
+  font-size: 12px;
+  color: rgba(255,255,255,0.35);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

@@ -1,0 +1,62 @@
+.rules-page {
+  max-width: 700px;
+}
+
+.rules-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 32px;
+  color: #fff;
+  letter-spacing: 1px;
+  margin-bottom: 24px;
+}
+
+.rules-section {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 16px;
+}
+
+.rules-section h2 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 20px;
+  color: #ff6b00;
+  letter-spacing: 0.5px;
+  margin: 0 0 12px 0;
+}
+
+.rules-section p {
+  font-size: 14px;
+  color: rgba(255,255,255,0.65);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.rules-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rules-section li {
+  font-size: 14px;
+  color: rgba(255,255,255,0.65);
+  padding-left: 16px;
+  position: relative;
+  line-height: 1.5;
+}
+
+.rules-section li::before {
+  content: '–';
+  position: absolute;
+  left: 0;
+  color: rgba(255,255,255,0.25);
+}
+
+.rules-section strong {
+  color: rgba(255,255,255,0.85);
+}

@@ -1,0 +1,82 @@
+.recaps-page {
+  max-width: 800px;
+}
+
+.recaps-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 32px;
+  color: #fff;
+  letter-spacing: 1px;
+  margin-bottom: 24px;
+}
+
+.recaps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.recap-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 16px;
+  padding: 28px 32px;
+}
+
+.recap-date {
+  font-size: 12px;
+  color: #ff6b00;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.recap-heading {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  color: #fff;
+  letter-spacing: 0.5px;
+  margin-bottom: 16px;
+  line-height: 1.2;
+}
+
+.recap-body {
+  font-size: 15px;
+  color: rgba(255,255,255,0.7);
+  line-height: 1.7;
+}
+
+.recap-body p {
+  margin: 0 0 10px 0;
+}
+
+.recap-body strong {
+  color: #fff;
+}
+
+.recap-images {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.recap-image {
+  max-width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.recaps-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: rgba(255,255,255,0.4);
+}
+
+.recaps-empty h2 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  color: #fff;
+  margin-bottom: 8px;
+}

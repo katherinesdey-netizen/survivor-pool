@@ -40,7 +40,15 @@ interface Pick {
   participants: { full_name: string }
 }
 
-type Tab = 'participants' | 'picks' | 'assign'
+type Tab = 'participants' | 'picks' | 'assign' | 'recaps'
+
+interface Recap {
+  id: number
+  title: string
+  body: string
+  image_urls: string[]
+  game_date: string
+}
 
 export default function AdminPage() {
   const [tab, setTab] = useState<Tab>('participants')
@@ -48,6 +56,7 @@ export default function AdminPage() {
   const [teams, setTeams] = useState<Team[]>([])
   const [days, setDays] = useState<TournamentDay[]>([])
   const [picks, setPicks] = useState<Pick[]>([])
+  const [recaps, setRecaps] = useState<Recap[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
   const [msg, setMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null)
@@ -59,21 +68,30 @@ export default function AdminPage() {
   const [assignTeamId, setAssignTeamId] = useState('')
   const [assignDate, setAssignDate] = useState('')
 
+  // Recap form state
+  const [recapTitle, setRecapTitle] = useState('')
+  const [recapBody, setRecapBody] = useState('')
+  const [recapDate, setRecapDate] = useState(new Date().toISOString().split('T')[0])
+  const [recapImageUrls, setRecapImageUrls] = useState(['', '', ''])
+
   useEffect(() => { fetchData() }, [])
 
   async function fetchData() {
     setLoading(true)
 
-    const [{ data: pData }, { data: tData }, { data: dData }, { data: pickData }] = await Promise.all([
+    const [{ data: pData }, { data: tData }, { data: dData }, { data: pickData }, { data: recapData }] = await Promise.all([
       supabase.from('participants').select('*').order('full_name'),
       supabase.from('teams').select('*').eq('is_eliminated', false).order('seed'),
-      supabase.from('tournament_days').select('*').order('game_date'),      supabase.from('picks').select('id, participant_id, team_id, game_date, result, is_auto_assigned, teams(name, seed), participants(full_name)').order('game_date', { ascending: false })
+      supabase.from('tournament_days').select('*').order('game_date'),
+      supabase.from('picks').select('id, participant_id, team_id, game_date, result, is_auto_assigned, teams(name, seed), participants(full_name)').order('game_date', { ascending: false }),
+      supabase.from('recaps').select('*').order('game_date', { ascending: false })
     ])
 
     setParticipants(pData || [])
     setTeams(tData || [])
     setDays(dData || [])
     setPicks((pickData as any) || [])
+    setRecaps(recapData || [])
     setLoading(false)
   }
 
@@ -202,6 +220,40 @@ export default function AdminPage() {
     })
   }
 
+  async function handleSaveRecap(e: React.FormEvent) {
+    e.preventDefault()
+    if (!recapTitle.trim() || !recapBody.trim()) return
+    setSaving('recap')
+
+    const imageUrls = recapImageUrls.filter(u => u.trim())
+
+    const { error } = await supabase.from('recaps').insert({
+      title: recapTitle.trim(),
+      body: recapBody.trim(),
+      game_date: recapDate,
+      image_urls: imageUrls
+    })
+
+    if (error) showMsg('error', 'Failed to save recap: ' + error.message)
+    else {
+      showMsg('success', 'Recap posted!')
+      setRecapTitle('')
+      setRecapBody('')
+      setRecapImageUrls(['', '', ''])
+      setRecapDate(new Date().toISOString().split('T')[0])
+      await fetchData()
+    }
+    setSaving(null)
+  }
+
+  async function handleDeleteRecap(id: number) {
+    if (!window.confirm('Delete this recap?')) return
+    const { error } = await supabase.from('recaps').delete().eq('id', id)
+    if (error) showMsg('error', 'Failed to delete recap.')
+    else showMsg('success', 'Recap deleted.')
+    await fetchData()
+  }
+
   const paidCount = participants.filter(p => p.is_paid).length
   const aliveCount = participants.filter(p => !p.is_eliminated && p.is_paid).length
 
@@ -257,6 +309,9 @@ export default function AdminPage() {
         </button>
         <button className={`admin-tab ${tab === 'assign' ? 'active' : ''}`} onClick={() => setTab('assign')}>
           Assign Pick
+        </button>
+        <button className={`admin-tab ${tab === 'recaps' ? 'active' : ''}`} onClick={() => setTab('recaps')}>
+          Recaps ({recaps.length})
         </button>
       </div>
 
@@ -426,6 +481,92 @@ export default function AdminPage() {
               {saving === 'assign' ? 'Assigning...' : '⚡ Assign Pick'}
             </button>
           </form>
+        </div>
+      )}
+
+      {/* RECAPS TAB */}
+      {tab === 'recaps' && (
+        <div className="recaps-admin-wrap">
+
+          {/* Post new recap */}
+          <div className="recap-form-section">
+            <h3 className="recap-form-title">Post a New Recap</h3>
+            <form onSubmit={handleSaveRecap} className="recap-form">
+              <div className="assign-field">
+                <label>Game Date</label>
+                <input
+                  type="date"
+                  value={recapDate}
+                  onChange={e => setRecapDate(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="assign-field">
+                <label>Title</label>
+                <input
+                  type="text"
+                  value={recapTitle}
+                  onChange={e => setRecapTitle(e.target.value)}
+                  placeholder="Day 1: Chaos Reigns"
+                  required
+                />
+              </div>
+              <div className="assign-field">
+                <label>Recap <span style={{fontWeight:400, color:'rgba(255,255,255,0.35)'}}>— use **bold** for emphasis, press Enter for new paragraphs</span></label>
+                <textarea
+                  value={recapBody}
+                  onChange={e => setRecapBody(e.target.value)}
+                  placeholder="Write the day's recap here..."
+                  rows={10}
+                  required
+                />
+              </div>
+              <div className="assign-field">
+                <label>Image / GIF URLs <span style={{fontWeight:400, color:'rgba(255,255,255,0.35)'}}>— paste direct image links (optional)</span></label>
+                {recapImageUrls.map((url, i) => (
+                  <input
+                    key={i}
+                    type="url"
+                    value={url}
+                    onChange={e => {
+                      const updated = [...recapImageUrls]
+                      updated[i] = e.target.value
+                      setRecapImageUrls(updated)
+                    }}
+                    placeholder={`Image URL ${i + 1}`}
+                    style={{ marginBottom: '8px' }}
+                  />
+                ))}
+              </div>
+              <button type="submit" className="btn-primary" disabled={saving === 'recap'}>
+                {saving === 'recap' ? 'Posting...' : '📝 Post Recap'}
+              </button>
+            </form>
+          </div>
+
+          {/* Existing recaps */}
+          {recaps.length > 0 && (
+            <div className="recap-list-section">
+              <h3 className="recap-form-title">Posted Recaps</h3>
+              <div className="recap-admin-list">
+                {recaps.map(recap => (
+                  <div key={recap.id} className="recap-admin-row">
+                    <div className="recap-admin-info">
+                      <div className="recap-admin-date">{formatDate(recap.game_date)}</div>
+                      <div className="recap-admin-title">{recap.title}</div>
+                      <div className="recap-admin-preview">{recap.body.slice(0, 100)}...</div>
+                    </div>
+                    <button
+                      className="action-btn btn-danger"
+                      onClick={() => handleDeleteRecap(recap.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
