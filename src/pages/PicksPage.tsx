@@ -41,6 +41,7 @@ export default function PicksPage() {
   useEffect(() => {
     if (!participant) return
     fetchData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [participant])
 
   async function fetchData() {

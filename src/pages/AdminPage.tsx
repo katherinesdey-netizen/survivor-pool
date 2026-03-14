@@ -110,13 +110,6 @@ export default function AdminPage() {
     setSaving(null)
   }
 
-  async function deletePick(pickId: number) {
-    if (!window.confirm('Delete this pick?')) return
-    const { error } = await supabase.from('picks').delete().eq('id', pickId)
-    if (error) showMsg('error', 'Failed to delete pick.')
-    else showMsg('success', 'Pick deleted.')
-    await fetchData()
-  }
 
   async function updatePickResult(pickId: number, result: string) {
     const { error } = await supabase.from('picks').update({ result }).eq('id', pickId)

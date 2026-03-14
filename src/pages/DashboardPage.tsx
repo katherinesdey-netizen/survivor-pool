@@ -31,6 +31,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!participant) return
     fetchData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [participant])
 
   async function fetchData() {
