@@ -520,3 +520,20 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.recap-img-hint {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.45);
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.recap-img-hint code {
+  color: #ff6b00;
+  font-family: monospace;
+  font-size: 12px;
+}

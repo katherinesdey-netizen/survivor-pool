@@ -37,7 +37,22 @@ export default function RecapsPage() {
     return body
       .split('\n')
       .map((line, i) => {
+        // Image tag: [img:URL]
+        const imgMatch = line.trim().match(/^\[img:(.+)\]$/)
+        if (imgMatch) {
+          return (
+            <img
+              key={i}
+              src={imgMatch[1]}
+              alt="Recap media"
+              className="recap-inline-image"
+              onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+            />
+          )
+        }
+
         if (line.trim() === '') return <br key={i} />
+
         // Bold: **text**
         const parts = line.split(/(\*\*[^*]+\*\*)/)
         return (
@@ -75,19 +90,6 @@ export default function RecapsPage() {
             <div className="recap-date">{formatDate(recap.game_date)}</div>
             <h2 className="recap-heading">{recap.title}</h2>
             <div className="recap-body">{renderBody(recap.body)}</div>
-            {recap.image_urls && recap.image_urls.length > 0 && (
-              <div className="recap-images">
-                {recap.image_urls.filter(u => u.trim()).map((url, i) => (
-                  <img
-                    key={i}
-                    src={url}
-                    alt={`Recap image ${i + 1}`}
-                    className="recap-image"
-                    onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
-                  />
-                ))}
-              </div>
-            )}
           </div>
         ))}
       </div>
