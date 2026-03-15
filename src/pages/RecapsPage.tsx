@@ -24,6 +24,7 @@ export default function RecapsPage() {
         .from('recaps')
         .select('*')
         .order('game_date', { ascending: false })
+        .order('id', { ascending: false })
         .limit(20)
       setRecaps(data || [])
     } catch (err) {
@@ -43,21 +44,27 @@ export default function RecapsPage() {
     return body
       .split('\n')
       .map((line, i) => {
-        // Image tag: [img:URL]
-        const imgMatch = line.trim().match(/^\[img:(.+)\]$/)
-        if (imgMatch) {
+        const trimmed = line.trim()
+
+        // [img:URL] tag or bare URL on its own line → render as image
+        const imgTagMatch = trimmed.match(/^\[img:(.+)\]$/)
+        const bareUrl = trimmed.match(/^https?:\/\/\S+$/)
+        const imgSrc = imgTagMatch ? imgTagMatch[1] : (bareUrl ? bareUrl[0] : null)
+
+        if (imgSrc) {
           return (
             <img
               key={i}
-              src={imgMatch[1]}
+              src={imgSrc}
               alt="Recap media"
               className="recap-inline-image"
+              crossOrigin="anonymous"
               onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
             />
           )
         }
 
-        if (line.trim() === '') return <br key={i} />
+        if (trimmed === '') return <br key={i} />
 
         // Bold: **text**
         const parts = line.split(/(\*\*[^*]+\*\*)/)

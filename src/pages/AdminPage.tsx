@@ -85,7 +85,7 @@ export default function AdminPage() {
       supabase.from('teams').select('*').eq('is_eliminated', false).order('seed'),
       supabase.from('tournament_days').select('*').order('game_date'),
       supabase.from('picks').select('id, participant_id, team_id, game_date, result, is_auto_assigned, teams(name, seed), participants(full_name)').order('game_date', { ascending: false }),
-      supabase.from('recaps').select('id, title, game_date, image_urls').order('game_date', { ascending: false })
+      supabase.from('recaps').select('id, title, game_date, image_urls').order('game_date', { ascending: false }).order('id', { ascending: false })
     ])
 
     setParticipants(pData || [])
@@ -546,8 +546,8 @@ export default function AdminPage() {
               <div className="assign-field">
                 <label>Recap <span style={{fontWeight:400, color:'rgba(255,255,255,0.35)'}}>— use **bold** for emphasis, new lines for paragraphs</span></label>
                 <div className="recap-img-hint">
-                  To add an image or GIF inline, put it on its own line like this:<br/>
-                  <code>[img:https://media.giphy.com/your-gif-url.gif]</code>
+                  To add an image or GIF inline, paste the direct URL on its own line:<br/>
+                  <code>https://i.imgur.com/your-image.jpg</code>
                 </div>
                 <textarea
                   value={recapBody}
