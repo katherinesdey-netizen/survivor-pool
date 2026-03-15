@@ -61,6 +61,7 @@ interface EspnGame {
   date: string
   competitions: [{
     competitors: EspnTeam[]
+    broadcasts: { media: { shortName: string } }[]
     status: {
       displayClock: string
       period: number
@@ -95,10 +96,10 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [participant])
 
-  // ESPN — refresh every 60s
+  // ESPN — 30s when live games, 60s otherwise
   useEffect(() => {
     fetchScores()
-    const iv = setInterval(fetchScores, 60000)
+    const iv = setInterval(fetchScores, 30000)
     return () => clearInterval(iv)
   }, [])
 
@@ -419,26 +420,34 @@ export default function DashboardPage() {
                   const isFinal = status.type.completed
                   const isScheduled = !isLive && !isFinal
 
+                  const network = comp.broadcasts?.[0]?.media?.shortName || null
+                  const period = status.period
+                  const clock = status.displayClock
+                  const periodLabel = period === 1 ? '1st Half' : period === 2 ? '2nd Half' : period > 2 ? `OT${period - 2}` : ''
+
                   return (
                     <div key={game.id} className={`score-card ${isLive ? 'score-live' : ''}`}>
-                      <div className="score-status">
-                        {isLive && <span className="live-dot" />}
-                        <span className={`score-status-text ${isLive ? 'live-text' : ''}`}>
-                          {isLive ? `${status.type.shortDetail} · ${status.displayClock}` : status.type.shortDetail}
-                        </span>
+                      <div className="score-header">
+                        <div className="score-status">
+                          {isLive && <span className="live-dot" />}
+                          <span className={`score-status-text ${isLive ? 'live-text' : ''}`}>
+                            {isLive
+                              ? `${periodLabel} · ${clock}`
+                              : isFinal ? 'Final'
+                              : fmtGameTime(game.date)}
+                          </span>
+                        </div>
+                        {network && <span className="score-network">{network}</span>}
                       </div>
                       <div className="score-matchup">
                         <div className={`score-team ${away?.winner ? 'score-winner' : isFinal && !away?.winner ? 'score-loser' : ''}`}>
                           <span className="score-team-name">{away?.team.abbreviation}</span>
-                          {!isScheduled && <span className="score-pts">{away?.score}</span>}
+                          {(isLive || isFinal) && <span className="score-pts">{away?.score}</span>}
                         </div>
                         <div className={`score-team ${home?.winner ? 'score-winner' : isFinal && !home?.winner ? 'score-loser' : ''}`}>
                           <span className="score-team-name">{home?.team.abbreviation}</span>
-                          {!isScheduled && <span className="score-pts">{home?.score}</span>}
+                          {(isLive || isFinal) && <span className="score-pts">{home?.score}</span>}
                         </div>
-                        {isScheduled && (
-                          <div className="score-time">{fmtGameTime(game.date)}</div>
-                        )}
                       </div>
                     </div>
                   )
