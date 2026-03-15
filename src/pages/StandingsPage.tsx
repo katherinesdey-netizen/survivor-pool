@@ -16,7 +16,7 @@ interface Pick {
   game_date: string
   result: string
   is_auto_assigned: boolean
-  teams: { name: string; seed: number }
+  teams: { name: string; seed: number } | null
 }
 
 interface TournamentDay {
@@ -29,9 +29,7 @@ export default function StandingsPage() {
   const [participants, setParticipants] = useState<Participant[]>([])
   const [picks, setPicks] = useState<Pick[]>([])
   const [days, setDays] = useState<TournamentDay[]>([])
-  const [totalPot, setTotalPot] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchData()
@@ -40,32 +38,25 @@ export default function StandingsPage() {
   async function fetchData() {
     setLoading(true)
     try {
-      // Get all paid participants
-      const { data: participantsData } = await supabase
-        .from('participants')
-        .select('id, full_name, is_eliminated, is_paid, eliminated_on_date')
-        .eq('is_paid', true)
-        .order('is_eliminated', { ascending: true })
+      const [{ data: participantsData }, { data: picksData }, { data: daysData }] =
+        await Promise.all([
+          supabase
+            .from('participants')
+            .select('id, full_name, is_eliminated, is_paid, eliminated_on_date')
+            .eq('is_paid', true)
+            .order('full_name', { ascending: true }),
+          supabase
+            .from('picks')
+            .select('participant_id, game_date, result, is_auto_assigned, teams(name, seed)')
+            .order('game_date', { ascending: true }),
+          supabase
+            .from('tournament_days')
+            .select('game_date, round_name')
+            .order('game_date', { ascending: true }),
+        ])
 
       setParticipants(participantsData || [])
-      setTotalPot((participantsData || []).length * 25)
-
-      // Get all picks with team info
-      const { data: picksData } = await supabase
-        .from('picks')
-        .select('participant_id, game_date, result, is_auto_assigned, teams(name, seed)')
-        .order('game_date', { ascending: true })
-
       setPicks((picksData as any) || [])
-
-      // Get tournament days that have passed (for column headers)
-      const today = new Date().toISOString().split('T')[0]
-      const { data: daysData } = await supabase
-        .from('tournament_days')
-        .select('game_date, round_name')
-        .lte('game_date', today)
-        .order('game_date', { ascending: true })
-
       setDays(daysData || [])
     } catch (err) {
       console.error('fetchData error:', err)
@@ -76,22 +67,38 @@ export default function StandingsPage() {
 
   function formatDate(dateStr: string) {
     return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', {
-      month: 'short', day: 'numeric'
+      month: 'short',
+      day: 'numeric',
     })
   }
 
-  function getPicksForParticipantOnDay(participantId: string, gameDate: string) {
-    return picks.filter(p => p.participant_id === participantId && p.game_date === gameDate)
+  function getPick(participantId: string, gameDate: string): Pick | null {
+    return picks.find(p => p.participant_id === participantId && p.game_date === gameDate) || null
   }
 
-  const alive = participants.filter(p => !p.is_eliminated)
-  const eliminated = participants.filter(p => p.is_eliminated)
+  const today = new Date().toISOString().split('T')[0]
+  const pastDays = days.filter(d => d.game_date <= today)
+
+  const alive = participants
+    .filter(p => !p.is_eliminated)
+    .sort((a, b) => a.full_name.localeCompare(b.full_name))
+
+  // Eliminated: sorted so the most recently eliminated (lasted longest) comes first
+  const eliminated = participants
+    .filter(p => p.is_eliminated)
+    .sort((a, b) => {
+      if (!a.eliminated_on_date) return 1
+      if (!b.eliminated_on_date) return -1
+      return b.eliminated_on_date.localeCompare(a.eliminated_on_date)
+    })
+
+  const totalPot = participants.length * 25
 
   if (loading) return <div className="loading-screen"><div className="spinner" /></div>
 
   return (
     <div className="standings-page">
-      {/* Header stats */}
+      {/* Stats bar */}
       <div className="standings-stats">
         <div className="standings-stat">
           <div className="sstat-num">{alive.length}</div>
@@ -110,150 +117,123 @@ export default function StandingsPage() {
         <div className="standings-divider" />
         <div className="standings-stat">
           <div className="sstat-num">{participants.length}</div>
-          <div className="sstat-label">Paid Entries</div>
+          <div className="sstat-label">Entries</div>
         </div>
       </div>
 
-      {/* Alive participants */}
-      {alive.length > 0 && (
-        <div className="standings-section">
-          <h2 className="standings-section-title">🟢 Still Alive ({alive.length})</h2>
-          <div className="standings-list">
-            {alive.map(p => (
-              <div key={p.id} className={`standings-row ${p.id === me?.id ? 'is-me' : ''}`}>
-                <div className="standings-row-main" onClick={() => setExpandedId(expandedId === p.id ? null : p.id)}>
-                  <div className="standings-name">
-                    {p.full_name}
-                    {p.id === me?.id && <span className="me-badge">you</span>}
-                  </div>
-                  <div className="standings-picks-summary">
-                    {days.map(day => {
-                      const dayPicks = getPicksForParticipantOnDay(p.id, day.game_date)
-                      return dayPicks.map((pick, i) => (
-                        <span
-                          key={`${day.game_date}-${i}`}
-                          className={`pick-pill ${pick.result}`}
-                          title={`${pick.teams?.name} — ${pick.result}`}
-                        >
-                          {pick.result === 'won' ? '✅' : pick.result === 'lost' ? '❌' : '⏳'}
-                        </span>
-                      ))
-                    })}
-                  </div>
-                  <div className="standings-expand">{expandedId === p.id ? '▲' : '▼'}</div>
-                </div>
-
-                {expandedId === p.id && (
-                  <div className="standings-detail">
-                    {days.length === 0 ? (
-                      <p className="detail-empty">No picks recorded yet.</p>
-                    ) : (
-                      <table className="detail-table">
-                        <thead>
-                          <tr>
-                            <th>Date</th>
-                            <th>Team</th>
-                            <th>Result</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {days.map(day =>
-                            getPicksForParticipantOnDay(p.id, day.game_date).map((pick, i) => (
-                              <tr key={`${day.game_date}-${i}`}>
-                                <td>{formatDate(day.game_date)}</td>
-                                <td>
-                                  {pick.teams?.name}
-                                  {pick.is_auto_assigned && <span className="auto-badge">auto</span>}
-                                </td>
-                                <td className={`detail-result ${pick.result}`}>
-                                  {pick.result === 'won' ? '✅ Won' : pick.result === 'lost' ? '❌ Lost' : '⏳ Pending'}
-                                </td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+      {/* Spreadsheet grid */}
+      {participants.length === 0 ? (
+        <div className="standings-empty">
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏀</div>
+          <h2>No entries yet</h2>
+          <p>Standings will appear here once participants have paid their entry fee.</p>
         </div>
-      )}
+      ) : (
+        <div className="standings-table-wrap">
+          <table className="standings-grid">
+            <thead>
+              <tr>
+                <th className="col-name col-sticky">Participant</th>
+                {pastDays.map(day => (
+                  <th key={day.game_date} className="col-day">
+                    <div className="day-round">{day.round_name}</div>
+                    <div className="day-date">{formatDate(day.game_date)}</div>
+                  </th>
+                ))}
+                <th className="col-status">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* ── Alive section ── */}
+              <tr className="section-header-row">
+                <td colSpan={pastDays.length + 2}>
+                  <span className="section-label alive-label">🟢 Still Alive — {alive.length}</span>
+                </td>
+              </tr>
 
-      {/* Eliminated participants */}
-      {eliminated.length > 0 && (
-        <div className="standings-section">
-          <h2 className="standings-section-title">💀 Eliminated ({eliminated.length})</h2>
-          <div className="standings-list eliminated-list">
-            {eliminated.map(p => (
-              <div key={p.id} className={`standings-row eliminated ${p.id === me?.id ? 'is-me' : ''}`}>
-                <div className="standings-row-main" onClick={() => setExpandedId(expandedId === p.id ? null : p.id)}>
-                  <div className="standings-name">
-                    {p.full_name}
+              {alive.map(p => (
+                <tr key={p.id} className={`grid-row ${p.id === me?.id ? 'row-me' : ''}`}>
+                  <td className="col-name col-sticky name-cell">
+                    <span className="name-text">{p.full_name}</span>
+                    {p.id === me?.id && <span className="me-badge">you</span>}
+                  </td>
+                  {pastDays.map(day => {
+                    const pick = getPick(p.id, day.game_date)
+                    const cls = pick ? `cell-${pick.result}` : 'cell-empty'
+                    return (
+                      <td key={day.game_date} className={`pick-cell ${cls}`}>
+                        {pick ? (
+                          <>
+                            <span className="cell-seed">
+                              {pick.teams?.seed ? `#${pick.teams.seed}` : ''}
+                            </span>
+                            <span className="cell-team">{pick.teams?.name ?? '—'}</span>
+                            {pick.is_auto_assigned && (
+                              <span className="auto-dot" title="Auto-assigned" />
+                            )}
+                          </>
+                        ) : (
+                          <span className="cell-no-pick">—</span>
+                        )}
+                      </td>
+                    )
+                  })}
+                  <td className="col-status status-alive">✅ Alive</td>
+                </tr>
+              ))}
+
+              {/* ── Eliminated section ── */}
+              {eliminated.length > 0 && (
+                <tr className="section-header-row">
+                  <td colSpan={pastDays.length + 2}>
+                    <span className="section-label elim-label">
+                      💀 Eliminated — {eliminated.length}
+                    </span>
+                  </td>
+                </tr>
+              )}
+
+              {eliminated.map(p => (
+                <tr key={p.id} className={`grid-row row-eliminated ${p.id === me?.id ? 'row-me' : ''}`}>
+                  <td className="col-name col-sticky name-cell">
+                    <span className="name-text">{p.full_name}</span>
                     {p.id === me?.id && <span className="me-badge">you</span>}
                     {p.eliminated_on_date && (
                       <span className="elim-date">out {formatDate(p.eliminated_on_date)}</span>
                     )}
-                  </div>
-                  <div className="standings-picks-summary">
-                    {days.map(day => {
-                      const dayPicks = getPicksForParticipantOnDay(p.id, day.game_date)
-                      return dayPicks.map((pick, i) => (
-                        <span
-                          key={`${day.game_date}-${i}`}
-                          className={`pick-pill ${pick.result}`}
-                          title={`${pick.teams?.name} — ${pick.result}`}
-                        >
-                          {pick.result === 'won' ? '✅' : pick.result === 'lost' ? '❌' : '⏳'}
-                        </span>
-                      ))
-                    })}
-                  </div>
-                  <div className="standings-expand">{expandedId === p.id ? '▲' : '▼'}</div>
-                </div>
-
-                {expandedId === p.id && (
-                  <div className="standings-detail">
-                    <table className="detail-table">
-                      <thead>
-                        <tr>
-                          <th>Date</th>
-                          <th>Team</th>
-                          <th>Result</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {days.map(day =>
-                          getPicksForParticipantOnDay(p.id, day.game_date).map((pick, i) => (
-                            <tr key={`${day.game_date}-${i}`}>
-                              <td>{formatDate(day.game_date)}</td>
-                              <td>
-                                {pick.teams?.name}
-                                {pick.is_auto_assigned && <span className="auto-badge">auto</span>}
-                              </td>
-                              <td className={`detail-result ${pick.result}`}>
-                                {pick.result === 'won' ? '✅ Won' : pick.result === 'lost' ? '❌ Lost' : '⏳ Pending'}
-                              </td>
-                            </tr>
-                          ))
+                  </td>
+                  {pastDays.map(day => {
+                    // Shade cells after elimination date
+                    if (p.eliminated_on_date && day.game_date > p.eliminated_on_date) {
+                      return <td key={day.game_date} className="pick-cell cell-after-elim" />
+                    }
+                    const pick = getPick(p.id, day.game_date)
+                    const cls = pick ? `cell-${pick.result}` : 'cell-empty'
+                    return (
+                      <td key={day.game_date} className={`pick-cell ${cls}`}>
+                        {pick ? (
+                          <>
+                            <span className="cell-seed">
+                              {pick.teams?.seed ? `#${pick.teams.seed}` : ''}
+                            </span>
+                            <span className="cell-team">{pick.teams?.name ?? '—'}</span>
+                            {pick.is_auto_assigned && (
+                              <span className="auto-dot" title="Auto-assigned" />
+                            )}
+                          </>
+                        ) : (
+                          <span className="cell-no-pick">—</span>
                         )}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {participants.length === 0 && (
-        <div className="standings-empty">
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏀</div>
-          <h2>No paid entries yet</h2>
-          <p>Standings will appear here once participants have paid their entry fee.</p>
+                      </td>
+                    )
+                  })}
+                  <td className="col-status status-elim">
+                    {p.eliminated_on_date ? `Out ${formatDate(p.eliminated_on_date)}` : 'Out'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 

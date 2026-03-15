@@ -1,5 +1,5 @@
 import React from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import LoginPage from './pages/LoginPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
@@ -12,10 +12,14 @@ import RulesPage from './pages/RulesPage'
 import Layout from './components/Layout'
 import ScrollToTop from './components/ScrollToTop'
 
+// Public paths that don't require authentication
+const PUBLIC_PATHS = ['/standings']
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
+  const location = useLocation()
   if (loading) return <div className="loading-screen"><div className="spinner" /></div>
-  if (!user) return <Navigate to="/login" replace />
+  if (!user && !PUBLIC_PATHS.includes(location.pathname)) return <Navigate to="/login" replace />
   return <>{children}</>
 }
 

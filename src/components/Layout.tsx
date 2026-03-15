@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import './Layout.css'
 
 export default function Layout() {
-  const { participant, signOut } = useAuth()
+  const { user, participant, signOut } = useAuth()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -36,7 +36,10 @@ export default function Layout() {
               <NavLink to="/admin" className={({isActive}) => isActive ? 'nav-link admin-link active' : 'nav-link admin-link'}>Admin</NavLink>
             )}
           </nav>
-          <button className="signout-btn desktop-only" onClick={handleSignOut}>Sign out</button>
+          {user
+            ? <button className="signout-btn desktop-only" onClick={handleSignOut}>Sign out</button>
+            : <button className="signout-btn desktop-only" onClick={() => navigate('/login')}>Log in</button>
+          }
 
           {/* Hamburger button — mobile only */}
           <button
@@ -59,7 +62,10 @@ export default function Layout() {
             {participant?.is_admin && (
               <NavLink to="/admin" className={({isActive}) => isActive ? 'mobile-nav-link admin-link active' : 'mobile-nav-link admin-link'} onClick={closeMenu}>Admin</NavLink>
             )}
-            <button className="mobile-signout-btn" onClick={handleSignOut}>Sign out</button>
+            {user
+              ? <button className="mobile-signout-btn" onClick={handleSignOut}>Sign out</button>
+              : <button className="mobile-signout-btn" onClick={() => { navigate('/login'); closeMenu() }}>Log in</button>
+            }
           </nav>
         )}
       </header>
