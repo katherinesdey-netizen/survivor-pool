@@ -180,7 +180,7 @@ export default function DashboardPage() {
     setScoresLoading(true)
     try {
       const res = await fetch(
-        'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard'
+        'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=100'
       )
       const data = await res.json()
       setEspnGames(data.events || [])
@@ -408,7 +408,7 @@ export default function DashboardPage() {
             {scoresLoading ? (
               <div className="scores-loading">Loading scores…</div>
             ) : espnGames.length === 0 ? (
-              <div className="scores-empty">No games scheduled today.</div>
+              <div className="scores-empty">No NCAA Tournament games today.<br/><span style={{fontSize:'12px', color:'rgba(255,255,255,0.3)'}}>Check back on game days.</span></div>
             ) : (
               <div className="scores-list">
                 {espnGames.map(game => {
@@ -441,11 +441,11 @@ export default function DashboardPage() {
                       </div>
                       <div className="score-matchup">
                         <div className={`score-team ${away?.winner ? 'score-winner' : isFinal && !away?.winner ? 'score-loser' : ''}`}>
-                          <span className="score-team-name">{away?.team.abbreviation}</span>
+                          <span className="score-team-name">{away?.team.displayName}</span>
                           {(isLive || isFinal) && <span className="score-pts">{away?.score}</span>}
                         </div>
                         <div className={`score-team ${home?.winner ? 'score-winner' : isFinal && !home?.winner ? 'score-loser' : ''}`}>
-                          <span className="score-team-name">{home?.team.abbreviation}</span>
+                          <span className="score-team-name">{home?.team.displayName}</span>
                           {(isLive || isFinal) && <span className="score-pts">{home?.score}</span>}
                         </div>
                       </div>
