@@ -277,6 +277,44 @@ thead .col-sticky {
   background: rgba(255, 255, 255, 0.01);
 }
 
+/* Locked — deadline not yet passed */
+.cell-locked {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.cell-lock {
+  font-size: 13px;
+  opacity: 0.35;
+}
+
+/* Upcoming — future round not started */
+.cell-upcoming {
+  background: transparent;
+}
+
+.cell-upcoming-label {
+  color: rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+}
+
+/* Future column header */
+.col-future .day-round {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.col-future .day-date {
+  color: rgba(255, 255, 255, 0.15);
+}
+
+/* Multiple picks stacked in one cell */
+.cell-pick-row {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  justify-content: center;
+  line-height: 1.4;
+}
+
 /* Auto-assigned indicator dot */
 .auto-dot {
   display: inline-block;

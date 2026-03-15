@@ -22,6 +22,7 @@ interface Pick {
 interface TournamentDay {
   game_date: string
   round_name: string
+  deadline: string | null  // ISO timestamp — picks are revealed after this
 }
 
 export default function StandingsPage() {
@@ -30,9 +31,13 @@ export default function StandingsPage() {
   const [picks, setPicks] = useState<Pick[]>([])
   const [days, setDays] = useState<TournamentDay[]>([])
   const [loading, setLoading] = useState(true)
+  const [now, setNow] = useState(() => new Date())
 
   useEffect(() => {
     fetchData()
+    // Re-check deadlines every 60s so locks open automatically
+    const interval = setInterval(() => setNow(new Date()), 60_000)
+    return () => clearInterval(interval)
   }, [])
 
   async function fetchData() {
@@ -51,7 +56,7 @@ export default function StandingsPage() {
             .order('game_date', { ascending: true }),
           supabase
             .from('tournament_days')
-            .select('game_date, round_name')
+            .select('game_date, round_name, deadline')
             .order('game_date', { ascending: true }),
         ])
 
@@ -72,18 +77,27 @@ export default function StandingsPage() {
     })
   }
 
-  function getPick(participantId: string, gameDate: string): Pick | null {
-    return picks.find(p => p.participant_id === participantId && p.game_date === gameDate) || null
+  // Returns true when picks for this day should be visible
+  function isRevealed(day: TournamentDay): boolean {
+    if (!day.deadline) return true  // no deadline set → always show
+    return now >= new Date(day.deadline)
   }
 
-  const today = new Date().toISOString().split('T')[0]
-  const pastDays = days.filter(d => d.game_date <= today)
+  // Returns true if this day has any games yet (date is today or past)
+  function isActive(day: TournamentDay): boolean {
+    const today = new Date().toISOString().split('T')[0]
+    return day.game_date <= today
+  }
+
+  // All picks for a participant on a given date (may be multiple in Rd of 64)
+  function getPicksForDay(participantId: string, gameDate: string): Pick[] {
+    return picks.filter(p => p.participant_id === participantId && p.game_date === gameDate)
+  }
 
   const alive = participants
     .filter(p => !p.is_eliminated)
     .sort((a, b) => a.full_name.localeCompare(b.full_name))
 
-  // Eliminated: sorted so the most recently eliminated (lasted longest) comes first
   const eliminated = participants
     .filter(p => p.is_eliminated)
     .sort((a, b) => {
@@ -93,8 +107,61 @@ export default function StandingsPage() {
     })
 
   const totalPot = participants.length * 25
+  const colCount = days.length + 2  // name + days + status
 
   if (loading) return <div className="loading-screen"><div className="spinner" /></div>
+
+  function renderPickCell(
+    p: Participant,
+    day: TournamentDay,
+    extraClass?: string
+  ) {
+    const key = day.game_date
+    const afterElim = p.eliminated_on_date && day.game_date > p.eliminated_on_date
+
+    if (afterElim) {
+      return <td key={key} className="pick-cell cell-after-elim" />
+    }
+
+    if (!isActive(day)) {
+      // Future round — not started yet
+      return <td key={key} className="pick-cell cell-upcoming"><span className="cell-upcoming-label">—</span></td>
+    }
+
+    const dayPicks = getPicksForDay(p.id, day.game_date)
+    const revealed = isRevealed(day)
+
+    if (!revealed) {
+      // Deadline hasn't passed — lock the pick
+      return (
+        <td key={key} className={`pick-cell cell-locked ${extraClass ?? ''}`}>
+          <span className="cell-lock">🔒</span>
+        </td>
+      )
+    }
+
+    if (dayPicks.length === 0) {
+      return <td key={key} className="pick-cell cell-empty"><span className="cell-no-pick">—</span></td>
+    }
+
+    // One or multiple picks — stack them
+    // Cell color: if any pick is 'lost' → red; all 'won' → green; else neutral
+    const hasLost = dayPicks.some(pk => pk.result === 'lost')
+    const allWon = dayPicks.every(pk => pk.result === 'won')
+    const cellCls = hasLost ? 'cell-lost' : allWon ? 'cell-won' : 'cell-pending'
+
+    return (
+      <td key={key} className={`pick-cell ${cellCls} ${extraClass ?? ''}`}>
+        {dayPicks.map((pick, i) => (
+          <div key={i} className="cell-pick-row">
+            <span className="cell-seed">{pick.teams?.seed ? `#${pick.teams.seed}` : ''}</span>
+            <span className="cell-team">{pick.teams?.name ?? '—'}</span>
+            {pick.is_auto_assigned && <span className="auto-dot" title="Auto-assigned" />}
+          </div>
+        ))}
+      </td>
+    )
+  }
 
   return (
     <div className="standings-page">
@@ -121,7 +188,6 @@ export default function StandingsPage() {
         </div>
       </div>
 
-      {/* Spreadsheet grid */}
       {participants.length === 0 ? (
         <div className="standings-empty">
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏀</div>
@@ -133,9 +199,9 @@ export default function StandingsPage() {
           <table className="standings-grid">
             <thead>
               <tr>
-                <th className="col-name col-sticky">Participant</th>
-                {pastDays.map(day => (
-                  <th key={day.game_date} className="col-day">
+                <th className="col-name col-sticky">Name</th>
+                {days.map(day => (
+                  <th key={day.game_date} className={`col-day ${!isActive(day) ? 'col-future' : ''}`}>
                     <div className="day-round">{day.round_name}</div>
                     <div className="day-date">{formatDate(day.game_date)}</div>
                   </th>
@@ -144,9 +210,9 @@ export default function StandingsPage() {
               </tr>
             </thead>
             <tbody>
-              {/* ── Alive section ── */}
+              {/* ── Alive ── */}
               <tr className="section-header-row">
-                <td colSpan={pastDays.length + 2}>
+                <td colSpan={colCount}>
                   <span className="section-label alive-label">🟢 Still Alive — {alive.length}</span>
                 </td>
               </tr>
@@ -157,35 +223,15 @@ export default function StandingsPage() {
                     <span className="name-text">{p.full_name}</span>
                     {p.id === me?.id && <span className="me-badge">you</span>}
                   </td>
-                  {pastDays.map(day => {
-                    const pick = getPick(p.id, day.game_date)
-                    const cls = pick ? `cell-${pick.result}` : 'cell-empty'
-                    return (
-                      <td key={day.game_date} className={`pick-cell ${cls}`}>
-                        {pick ? (
-                          <>
-                            <span className="cell-seed">
-                              {pick.teams?.seed ? `#${pick.teams.seed}` : ''}
-                            </span>
-                            <span className="cell-team">{pick.teams?.name ?? '—'}</span>
-                            {pick.is_auto_assigned && (
-                              <span className="auto-dot" title="Auto-assigned" />
-                            )}
-                          </>
-                        ) : (
-                          <span className="cell-no-pick">—</span>
-                        )}
-                      </td>
-                    )
-                  })}
+                  {days.map(day => renderPickCell(p, day))}
                   <td className="col-status status-alive">✅ Alive</td>
                 </tr>
               ))}
 
-              {/* ── Eliminated section ── */}
+              {/* ── Eliminated ── */}
               {eliminated.length > 0 && (
                 <tr className="section-header-row">
-                  <td colSpan={pastDays.length + 2}>
+                  <td colSpan={colCount}>
                     <span className="section-label elim-label">
                       💀 Eliminated — {eliminated.length}
                     </span>
@@ -202,31 +248,7 @@ export default function StandingsPage() {
                       <span className="elim-date">out {formatDate(p.eliminated_on_date)}</span>
                     )}
                   </td>
-                  {pastDays.map(day => {
-                    // Shade cells after elimination date
-                    if (p.eliminated_on_date && day.game_date > p.eliminated_on_date) {
-                      return <td key={day.game_date} className="pick-cell cell-after-elim" />
-                    }
-                    const pick = getPick(p.id, day.game_date)
-                    const cls = pick ? `cell-${pick.result}` : 'cell-empty'
-                    return (
-                      <td key={day.game_date} className={`pick-cell ${cls}`}>
-                        {pick ? (
-                          <>
-                            <span className="cell-seed">
-                              {pick.teams?.seed ? `#${pick.teams.seed}` : ''}
-                            </span>
-                            <span className="cell-team">{pick.teams?.name ?? '—'}</span>
-                            {pick.is_auto_assigned && (
-                              <span className="auto-dot" title="Auto-assigned" />
-                            )}
-                          </>
-                        ) : (
-                          <span className="cell-no-pick">—</span>
-                        )}
-                      </td>
-                    )
-                  })}
+                  {days.map(day => renderPickCell(p, day))}
                   <td className="col-status status-elim">
                     {p.eliminated_on_date ? `Out ${formatDate(p.eliminated_on_date)}` : 'Out'}
                   </td>
