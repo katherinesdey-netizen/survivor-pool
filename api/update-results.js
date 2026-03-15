@@ -138,7 +138,7 @@ async function processResults() {
         // Mark losing team as eliminated from tournament
         await supabase
           .from('teams')
-          .update({ is_eliminated: true, eliminated_on: today })
+          .update({ is_eliminated: true, eliminated_on_date: today })
           .eq('id', loserTeam.id)
       }
     }
@@ -192,8 +192,10 @@ module.exports = async (req, res) => {
   const authHeader = req.headers.authorization
   const cronSecret = process.env.CRON_SECRET
   
-  if (req.method === 'POST' && cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return res.status(401).json({ error: 'Unauthorized' })
+  if (req.method === 'POST') {
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+      return res.status(401).json({ error: 'Unauthorized' })
+    }
   }
 
   const result = await processResults()

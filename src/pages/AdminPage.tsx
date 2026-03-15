@@ -72,7 +72,6 @@ export default function AdminPage() {
   const [recapTitle, setRecapTitle] = useState('')
   const [recapBody, setRecapBody] = useState('')
   const [recapDate, setRecapDate] = useState(new Date().toISOString().split('T')[0])
-  const [recapImageUrls, setRecapImageUrls] = useState(['', '', '']) // eslint-disable-line @typescript-eslint/no-unused-vars
 
   useEffect(() => { fetchData() }, [])
 
@@ -247,7 +246,6 @@ export default function AdminPage() {
       showMsg('success', 'Recap posted!')
       setRecapTitle('')
       setRecapBody('')
-      setRecapImageUrls(['', '', ''])
       setRecapDate(new Date().toISOString().split('T')[0])
       await fetchData()
     }
@@ -515,7 +513,7 @@ export default function AdminPage() {
                 <input
                   type="text"
                   value={recapTitle}
-                  onChange={e => setRecapTitle(cleanText(e.target.value))}
+                  onChange={e => setRecapTitle(e.target.value)}
                   placeholder="Day 1: Chaos Reigns"
                   required
                 />
@@ -528,7 +526,7 @@ export default function AdminPage() {
                 </div>
                 <textarea
                   value={recapBody}
-                  onChange={e => setRecapBody(cleanText(e.target.value))}
+                  onChange={e => setRecapBody(e.target.value)}
                   placeholder={`Duke came out firing today.\n\n[img:https://media.giphy.com/xxx.gif]\n\nMeanwhile on the other side of the bracket...`}
                   rows={12}
                   required

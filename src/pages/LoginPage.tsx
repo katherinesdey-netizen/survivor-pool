@@ -73,7 +73,7 @@ export default function LoginPage() {
 
     if (data.user) {
       // Create participant profile immediately
-      await supabase.from('participants').insert({
+      const { error: insertError } = await supabase.from('participants').insert({
         id: data.user.id,
         email: email.toLowerCase().trim(),
         full_name: fullName.trim(),
@@ -82,6 +82,14 @@ export default function LoginPage() {
         is_admin: false,
         is_eliminated: false,
       })
+
+      if (insertError) {
+        // Auth user was created but profile insert failed — sign them out and surface the error
+        await supabase.auth.signOut()
+        setError('Account created but profile setup failed. Please contact the pool admin.')
+        setLoading(false)
+        return
+      }
 
       // Sign them in right away
       await supabase.auth.signInWithPassword({ email: email.trim(), password })
