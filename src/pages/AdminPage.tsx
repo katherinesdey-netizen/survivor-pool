@@ -153,8 +153,20 @@ export default function AdminPage() {
 
   async function updatePickResult(pickId: number, result: string) {
     const { error } = await supabase.from('picks').update({ result }).eq('id', pickId)
-    if (error) showMsg('error', 'Failed to update result.')
-    else showMsg('success', 'Pick result updated.')
+    if (error) { showMsg('error', 'Failed to update result.'); return }
+
+    // If marked as lost, auto-eliminate the participant
+    if (result === 'lost') {
+      const pick = picks.find(p => p.id === pickId)
+      if (pick) {
+        await supabase.from('participants').update({
+          is_eliminated: true,
+          eliminated_on_date: pick.game_date,
+        }).eq('id', pick.participant_id)
+      }
+    }
+
+    showMsg('success', 'Pick result updated.')
     await fetchData()
   }
 

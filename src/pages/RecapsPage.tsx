@@ -53,14 +53,17 @@ export default function RecapsPage() {
 
         if (imgSrc) {
           return (
-            <img
-              key={i}
-              src={imgSrc}
-              alt="Recap media"
-              className="recap-inline-image"
-              crossOrigin="anonymous"
-              onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
-            />
+            <div key={i} className="recap-image-wrap">
+              <img
+                src={imgSrc}
+                alt="Recap media"
+                className="recap-inline-image"
+                onError={e => {
+                  const wrap = (e.target as HTMLImageElement).parentElement
+                  if (wrap) wrap.style.display = 'none'
+                }}
+              />
+            </div>
           )
         }
 

@@ -220,7 +220,8 @@ export default function DashboardPage() {
       {/* Two column layout: pick history left, recap right */}
       <div className="dashboard-bottom">
         <div className="dashboard-left">
-          <h2 className="section-title">Your Pick History</h2>
+          <div className="picks-history-card">
+          <h2 className="section-title" style={{marginTop: 0}}>Your Pick History</h2>
           {picks.length === 0 ? (
             <div className="empty-state">
               <p>No picks yet. {todayInfo ? <Link to="/picks">Submit your first pick →</Link> : 'Check back when the tournament starts.'}</p>
@@ -248,7 +249,8 @@ export default function DashboardPage() {
               ))}
             </div>
           )}
-        </div>
+          </div>{/* picks-history-card */}
+        </div>{/* dashboard-left */}
 
         {latestRecap && (
           <div className="dashboard-right">
