@@ -10,6 +10,7 @@ import PicksPage from './pages/PicksPage'
 import RecapsPage from './pages/RecapsPage'
 import RulesPage from './pages/RulesPage'
 import Layout from './components/Layout'
+import ScrollToTop from './components/ScrollToTop'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -29,6 +30,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <ScrollToTop />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />

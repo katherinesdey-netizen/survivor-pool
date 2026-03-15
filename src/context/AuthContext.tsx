@@ -51,17 +51,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
+    // Hard timeout — if auth init hangs for any reason, unblock the app
+    const timeout = setTimeout(() => setLoading(false), 6000)
+
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
         setSession(session)
         setUser(session?.user ?? null)
         if (session?.user) {
-          fetchParticipant(session.user.id).finally(() => setLoading(false))
+          fetchParticipant(session.user.id).finally(() => {
+            clearTimeout(timeout)
+            setLoading(false)
+          })
         } else {
+          clearTimeout(timeout)
           setLoading(false)
         }
       })
       .catch(() => {
+        clearTimeout(timeout)
         setLoading(false)
       })
 
