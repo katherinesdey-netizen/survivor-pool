@@ -45,56 +45,60 @@ export default function DashboardPage() {
 
   async function fetchData() {
     setLoading(true)
-
-    // Fetch participant's picks with team names
-    const { data: picksData } = await supabase
-      .from('picks')
-      .select('id, game_date, result, is_auto_assigned, teams(name, seed)')
-      .eq('participant_id', participant!.id)
-      .order('game_date', { ascending: true })
-
-    setPicks((picksData as any) || [])
-
-    // Find today's or next upcoming tournament day
-    const today = new Date().toISOString().split('T')[0]
-    const { data: dayData } = await supabase
-      .from('tournament_days')
-      .select('*')
-      .gte('game_date', today)
-      .order('game_date', { ascending: true })
-      .limit(1)
-
-    if (dayData && dayData.length > 0) {
-      setTodayInfo(dayData[0])
-
-      // Count picks already submitted for that day
-      const { count } = await supabase
+    try {
+      // Fetch participant's picks with team names
+      const { data: picksData } = await supabase
         .from('picks')
-        .select('*', { count: 'exact', head: true })
+        .select('id, game_date, result, is_auto_assigned, teams(name, seed)')
         .eq('participant_id', participant!.id)
-        .eq('game_date', dayData[0].game_date)
+        .order('game_date', { ascending: true })
 
-      setTodayPickCount(count || 0)
+      setPicks((picksData as any) || [])
+
+      // Find today's or next upcoming tournament day
+      const today = new Date().toISOString().split('T')[0]
+      const { data: dayData } = await supabase
+        .from('tournament_days')
+        .select('game_date, round_name, picks_required, deadline, is_complete')
+        .gte('game_date', today)
+        .order('game_date', { ascending: true })
+        .limit(1)
+
+      if (dayData && dayData.length > 0) {
+        setTodayInfo(dayData[0])
+
+        // Count picks already submitted for that day
+        const { count } = await supabase
+          .from('picks')
+          .select('*', { count: 'exact', head: true })
+          .eq('participant_id', participant!.id)
+          .eq('game_date', dayData[0].game_date)
+
+        setTodayPickCount(count || 0)
+      }
+
+      // Count paid participants for pot total
+      const { count: paidCount } = await supabase
+        .from('participants')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_paid', true)
+
+      setTotalPot((paidCount || 0) * 25)
+
+      // Fetch latest recap (limit 1 keeps response size bounded)
+      const { data: recapData } = await supabase
+        .from('recaps')
+        .select('id, title, body, game_date, image_urls')
+        .order('game_date', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      setLatestRecap(recapData)
+    } catch (err) {
+      console.error('fetchData error:', err)
+    } finally {
+      setLoading(false)
     }
-
-    // Count paid participants for pot total
-    const { count: paidCount } = await supabase
-      .from('participants')
-      .select('*', { count: 'exact', head: true })
-      .eq('is_paid', true)
-
-    setTotalPot((paidCount || 0) * 25)
-
-    // Fetch latest recap
-    const { data: recapData } = await supabase
-      .from('recaps')
-      .select('*')
-      .order('game_date', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    setLatestRecap(recapData)
-    setLoading(false)
   }
 
   function isDeadlinePassed(deadline: string) {

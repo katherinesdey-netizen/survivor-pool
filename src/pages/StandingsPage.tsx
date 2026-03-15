@@ -39,35 +39,39 @@ export default function StandingsPage() {
 
   async function fetchData() {
     setLoading(true)
+    try {
+      // Get all paid participants
+      const { data: participantsData } = await supabase
+        .from('participants')
+        .select('id, full_name, is_eliminated, is_paid, eliminated_on_date')
+        .eq('is_paid', true)
+        .order('is_eliminated', { ascending: true })
 
-    // Get all paid participants
-    const { data: participantsData } = await supabase
-      .from('participants')
-      .select('id, full_name, is_eliminated, is_paid, eliminated_on_date')
-      .eq('is_paid', true)
-      .order('is_eliminated', { ascending: true })
+      setParticipants(participantsData || [])
+      setTotalPot((participantsData || []).length * 25)
 
-    setParticipants(participantsData || [])
-    setTotalPot((participantsData || []).length * 25)
+      // Get all picks with team info
+      const { data: picksData } = await supabase
+        .from('picks')
+        .select('participant_id, game_date, result, is_auto_assigned, teams(name, seed)')
+        .order('game_date', { ascending: true })
 
-    // Get all picks with team info
-    const { data: picksData } = await supabase
-      .from('picks')
-      .select('participant_id, game_date, result, is_auto_assigned, teams(name, seed)')
-      .order('game_date', { ascending: true })
+      setPicks((picksData as any) || [])
 
-    setPicks((picksData as any) || [])
+      // Get tournament days that have passed (for column headers)
+      const today = new Date().toISOString().split('T')[0]
+      const { data: daysData } = await supabase
+        .from('tournament_days')
+        .select('game_date, round_name')
+        .lte('game_date', today)
+        .order('game_date', { ascending: true })
 
-    // Get tournament days that have passed (for column headers)
-    const today = new Date().toISOString().split('T')[0]
-    const { data: daysData } = await supabase
-      .from('tournament_days')
-      .select('game_date, round_name')
-      .lte('game_date', today)
-      .order('game_date', { ascending: true })
-
-    setDays(daysData || [])
-    setLoading(false)
+      setDays(daysData || [])
+    } catch (err) {
+      console.error('fetchData error:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   function formatDate(dateStr: string) {

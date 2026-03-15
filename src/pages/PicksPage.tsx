@@ -47,47 +47,49 @@ export default function PicksPage() {
 
   async function fetchData() {
     setLoading(true)
+    try {
+      // Get next upcoming tournament day
+      const today = new Date().toISOString().split('T')[0]
+      const { data: dayData } = await supabase
+        .from('tournament_days')
+        .select('id, game_date, round_name, picks_required, deadline, is_complete')
+        .gte('game_date', today)
+        .order('game_date', { ascending: true })
+        .limit(1)
 
-    // Get next upcoming tournament day
-    const today = new Date().toISOString().split('T')[0]
-    const { data: dayData } = await supabase
-      .from('tournament_days')
-      .select('*')
-      .gte('game_date', today)
-      .order('game_date', { ascending: true })
-      .limit(1)
+      if (!dayData || dayData.length === 0) {
+        return
+      }
 
-    if (!dayData || dayData.length === 0) {
+      const day = dayData[0]
+      setTodayInfo(day)
+
+      // Get all teams still in the tournament
+      const { data: teamsData } = await supabase
+        .from('teams')
+        .select('*')
+        .eq('is_eliminated', false)
+        .order('seed', { ascending: true })
+
+      setTeams(teamsData || [])
+
+      // Get ALL picks this participant has ever made
+      const { data: allPicks } = await supabase
+        .from('picks')
+        .select('id, team_id, game_date, result')
+        .eq('participant_id', participant!.id)
+
+      setExistingPicks(allPicks || [])
+
+      // Pre-select any picks already submitted for today
+      const todayPicks = (allPicks || []).filter(p => p.game_date === day.game_date)
+      setSelectedTeamIds(todayPicks.map(p => p.team_id))
+      setSavedTeamIds(todayPicks.map(p => p.team_id))
+    } catch (err) {
+      console.error('fetchData error:', err)
+    } finally {
       setLoading(false)
-      return
     }
-
-    const day = dayData[0]
-    setTodayInfo(day)
-
-    // Get all teams still in the tournament
-    const { data: teamsData } = await supabase
-      .from('teams')
-      .select('*')
-      .eq('is_eliminated', false)
-      .order('seed', { ascending: true })
-
-    setTeams(teamsData || [])
-
-    // Get ALL picks this participant has ever made
-    const { data: allPicks } = await supabase
-      .from('picks')
-      .select('id, team_id, game_date, result')
-      .eq('participant_id', participant!.id)
-
-    setExistingPicks(allPicks || [])
-
-    // Pre-select any picks already submitted for today
-    const todayPicks = (allPicks || []).filter(p => p.game_date === day.game_date)
-    setSelectedTeamIds(todayPicks.map(p => p.team_id))
-    setSavedTeamIds(todayPicks.map(p => p.team_id))
-
-    setLoading(false)
   }
 
   function isDeadlinePassed(deadline: string) {

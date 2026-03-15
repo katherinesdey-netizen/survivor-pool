@@ -19,12 +19,18 @@ export default function RecapsPage() {
 
   async function fetchRecaps() {
     setLoading(true)
-    const { data } = await supabase
-      .from('recaps')
-      .select('*')
-      .order('game_date', { ascending: false })
-    setRecaps(data || [])
-    setLoading(false)
+    try {
+      const { data } = await supabase
+        .from('recaps')
+        .select('*')
+        .order('game_date', { ascending: false })
+        .limit(20)
+      setRecaps(data || [])
+    } catch (err) {
+      console.error('fetchRecaps error:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   function formatDate(dateStr: string) {
