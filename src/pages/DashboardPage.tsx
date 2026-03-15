@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { Link } from 'react-router-dom'
 import './DashboardPage.css'
 
-interface Pick {
+interface MyPick {
   id: number
   game_date: string
   result: string
@@ -28,14 +28,66 @@ interface Recap {
   game_date: string
 }
 
+interface AllParticipant {
+  id: string
+  full_name: string
+  is_eliminated: boolean
+  is_paid: boolean
+}
+
+interface AllPick {
+  participant_id: string
+  game_date: string
+  result: string
+  is_auto_assigned: boolean
+  teams: { name: string; seed: number }
+}
+
+interface DayMeta {
+  game_date: string
+  round_name: string
+}
+
+interface EspnTeam {
+  team: { displayName: string; abbreviation: string }
+  score: string
+  homeAway: string
+  winner?: boolean
+}
+
+interface EspnGame {
+  id: string
+  name: string
+  date: string
+  competitions: [{
+    competitors: EspnTeam[]
+    status: {
+      displayClock: string
+      period: number
+      type: { name: string; completed: boolean; description: string; shortDetail: string }
+    }
+  }]
+}
+
 export default function DashboardPage() {
   const { participant } = useAuth()
-  const [picks, setPicks] = useState<Pick[]>([])
+
+  // My data
+  const [myPicks, setMyPicks] = useState<MyPick[]>([])
   const [todayInfo, setTodayInfo] = useState<TournamentDay | null>(null)
   const [todayPickCount, setTodayPickCount] = useState(0)
-  const [totalPot, setTotalPot] = useState(0)
   const [latestRecap, setLatestRecap] = useState<Recap | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Pool-wide data
+  const [allParticipants, setAllParticipants] = useState<AllParticipant[]>([])
+  const [allPicks, setAllPicks] = useState<AllPick[]>([])
+  const [dayMetas, setDayMetas] = useState<DayMeta[]>([])
+  const [totalPot, setTotalPot] = useState(0)
+
+  // ESPN
+  const [espnGames, setEspnGames] = useState<EspnGame[]>([])
+  const [scoresLoading, setScoresLoading] = useState(true)
 
   useEffect(() => {
     if (!participant) return
@@ -43,56 +95,78 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [participant])
 
+  // ESPN — refresh every 60s
+  useEffect(() => {
+    fetchScores()
+    const iv = setInterval(fetchScores, 60000)
+    return () => clearInterval(iv)
+  }, [])
+
   async function fetchData() {
     setLoading(true)
     try {
-      // Fetch participant's picks with team names
-      const { data: picksData } = await supabase
-        .from('picks')
-        .select('id, game_date, result, is_auto_assigned, teams(name, seed)')
-        .eq('participant_id', participant!.id)
-        .order('game_date', { ascending: true })
-
-      setPicks((picksData as any) || [])
-
-      // Find today's or next upcoming tournament day
       const today = new Date().toISOString().split('T')[0]
-      const { data: dayData } = await supabase
-        .from('tournament_days')
-        .select('game_date, round_name, picks_required, deadline, is_complete')
-        .gte('game_date', today)
-        .order('game_date', { ascending: true })
-        .limit(1)
 
+      const [
+        { data: myPicksData },
+        { data: dayData },
+        { data: allParticipantsData },
+        { data: allPicksData },
+        { data: daysData },
+        { count: paidCount },
+        { data: recapData },
+      ] = await Promise.all([
+        supabase.from('picks')
+          .select('id, game_date, result, is_auto_assigned, teams(name, seed)')
+          .eq('participant_id', participant!.id)
+          .order('game_date', { ascending: true }),
+
+        supabase.from('tournament_days')
+          .select('game_date, round_name, picks_required, deadline, is_complete')
+          .gte('game_date', today)
+          .order('game_date', { ascending: true })
+          .limit(1),
+
+        supabase.from('participants')
+          .select('id, full_name, is_eliminated, is_paid')
+          .eq('is_paid', true)
+          .order('is_eliminated', { ascending: true })
+          .order('full_name', { ascending: true }),
+
+        supabase.from('picks')
+          .select('participant_id, game_date, result, is_auto_assigned, teams(name, seed)')
+          .order('game_date', { ascending: true }),
+
+        supabase.from('tournament_days')
+          .select('game_date, round_name')
+          .lte('game_date', today)
+          .order('game_date', { ascending: true }),
+
+        supabase.from('participants')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_paid', true),
+
+        supabase.from('recaps')
+          .select('id, title, body, game_date, image_urls')
+          .order('game_date', { ascending: false })
+          .order('id', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ])
+
+      setMyPicks((myPicksData as any) || [])
       if (dayData && dayData.length > 0) {
         setTodayInfo(dayData[0])
-
-        // Count picks already submitted for that day
-        const { count } = await supabase
-          .from('picks')
+        const { count } = await supabase.from('picks')
           .select('*', { count: 'exact', head: true })
           .eq('participant_id', participant!.id)
           .eq('game_date', dayData[0].game_date)
-
         setTodayPickCount(count || 0)
       }
-
-      // Count paid participants for pot total
-      const { count: paidCount } = await supabase
-        .from('participants')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_paid', true)
-
+      setAllParticipants(allParticipantsData || [])
+      setAllPicks((allPicksData as any) || [])
+      setDayMetas(daysData || [])
       setTotalPot((paidCount || 0) * 25)
-
-      // Fetch latest recap (limit 1 keeps response size bounded)
-      const { data: recapData } = await supabase
-        .from('recaps')
-        .select('id, title, body, game_date, image_urls')
-        .order('game_date', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
       setLatestRecap(recapData)
     } catch (err) {
       console.error('fetchData error:', err)
@@ -101,184 +175,280 @@ export default function DashboardPage() {
     }
   }
 
-  function isDeadlinePassed(deadline: string) {
-    return new Date() > new Date(deadline)
+  async function fetchScores() {
+    setScoresLoading(true)
+    try {
+      const res = await fetch(
+        'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard'
+      )
+      const data = await res.json()
+      setEspnGames(data.events || [])
+    } catch {
+      // silently fail — scores are optional
+    } finally {
+      setScoresLoading(false)
+    }
   }
 
-  function formatDate(dateStr: string) {
-    return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', {
-      weekday: 'short', month: 'short', day: 'numeric'
-    })
-  }
+  // Build grid lookup: participantId → gameDate → pick
+  const picksGrid: Record<string, Record<string, AllPick>> = {}
+  allPicks.forEach(p => {
+    if (!picksGrid[p.participant_id]) picksGrid[p.participant_id] = {}
+    picksGrid[p.participant_id][p.game_date] = p
+  })
 
-  function formatDeadline(deadline: string) {
-    return new Date(deadline).toLocaleString('en-US', {
-      weekday: 'short', month: 'short', day: 'numeric',
-      hour: 'numeric', minute: '2-digit', timeZoneName: 'short'
-    })
-  }
-
+  const aliveCount = allParticipants.filter(p => !p.is_eliminated).length
+  const eliminatedCount = allParticipants.filter(p => p.is_eliminated).length
+  const totalPicks = myPicks.length
+  const wonPicks = myPicks.filter(p => p.result === 'won').length
   const picksNeeded = todayInfo ? todayInfo.picks_required - todayPickCount : 0
-  const deadlinePassed = todayInfo ? isDeadlinePassed(todayInfo.deadline) : false
-  const totalPicks = picks.length
-  const wonPicks = picks.filter(p => p.result === 'won').length
+  const deadlinePassed = todayInfo ? new Date() > new Date(todayInfo.deadline) : false
 
-  if (loading) {
-    return <div className="loading-screen"><div className="spinner" /></div>
+  function fmtDate(d: string) {
+    return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
   }
+  function fmtDeadline(d: string) {
+    return new Date(d).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
+  }
+  function fmtRound(r: string) {
+    // Shorten round names for column headers
+    return r.replace('Round of 64', 'R64').replace('Round of 32', 'R32')
+      .replace('Sweet 16', 'S16').replace('Elite Eight', 'E8')
+      .replace('Final Four', 'F4').replace('Championship', 'Champ')
+      .replace('National ', '')
+  }
+  function fmtGameTime(dateStr: string) {
+    return new Date(dateStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
+  }
+
+  if (loading) return <div className="loading-screen"><div className="spinner" /></div>
 
   return (
     <div className="dashboard">
-      {/* Status Banner */}
-      <div className={`status-banner ${participant?.is_eliminated ? 'eliminated' : 'alive'}`}>
-        <div className="status-left">
-          <div className="status-icon">{participant?.is_eliminated ? '💀' : '🟢'}</div>
-          <div>
-            <div className="status-label">Your Status</div>
-            <div className="status-value">
-              {participant?.is_eliminated
-                ? `Eliminated${participant.eliminated_on_date ? ` on ${formatDate(participant.eliminated_on_date)}` : ''}`
-                : 'Still Alive'}
-            </div>
-          </div>
-        </div>
-        <div className="status-right">
-          <div className="status-stat">
-            <div className="stat-num">${totalPot}</div>
-            <div className="stat-label">Total Pot</div>
-          </div>
-          <div className="status-divider" />
-          <div className="status-stat">
-            <div className="stat-num">{totalPicks}<span className="stat-max">/12</span></div>
-            <div className="stat-label">Picks Used</div>
-          </div>
-          <div className="status-divider" />
-          <div className="status-stat">
-            <div className="stat-num">{wonPicks}</div>
-            <div className="stat-label">Wins</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Payment Warning */}
       {!participant?.is_paid && (
         <div className="warning-card">
           <span className="warning-icon">⚠️</span>
           <div>
             <strong>Payment not confirmed yet</strong>
-            <p>Send $25 via Venmo to <strong>@adam-furtado</strong> to activate your entry. Your picks won't count until payment is confirmed.</p>
+            <p>Send $25 via Venmo to <strong>@adam-furtado</strong> to activate your entry.</p>
           </div>
         </div>
       )}
 
-      {/* Today's Action */}
-      {todayInfo && !participant?.is_eliminated && (
-        <div className="today-card">
-          <div className="today-header">
-            <div>
-              <div className="today-round">{todayInfo.round_name}</div>
-              <div className="today-date">{formatDate(todayInfo.game_date)}</div>
+      <div className="hq-columns">
+        {/* ── LEFT 2/3 ── */}
+        <div className="hq-left">
+
+          {/* LEGO 1 — Standings Overview */}
+          <div className="lego-card">
+            <div className="lego-label">🏆 Pool Standings</div>
+            <div className="hq-stats-row">
+              <div className="hq-stat">
+                <div className="hq-stat-num alive-num">{aliveCount}</div>
+                <div className="hq-stat-label">Still Alive</div>
+              </div>
+              <div className="hq-stat-divider" />
+              <div className="hq-stat">
+                <div className="hq-stat-num">{eliminatedCount}</div>
+                <div className="hq-stat-label">Eliminated</div>
+              </div>
+              <div className="hq-stat-divider" />
+              <div className="hq-stat">
+                <div className="hq-stat-num">${totalPot.toLocaleString()}</div>
+                <div className="hq-stat-label">Total Pot</div>
+              </div>
+              <div className="hq-stat-divider" />
+              <div className="hq-stat">
+                <div className="hq-stat-num">{allParticipants.length}</div>
+                <div className="hq-stat-label">Entrants</div>
+              </div>
             </div>
-            <div className="today-deadline">
-              <div className="deadline-label">Deadline</div>
-              <div className="deadline-time">{formatDeadline(todayInfo.deadline)}</div>
-            </div>
+            <Link to="/standings" className="hq-standings-link">Full standings →</Link>
           </div>
 
-          {deadlinePassed ? (
-            todayPickCount >= todayInfo.picks_required ? (
-              <div className="picks-done">
-                ✅ Picks submitted for today.
+          {/* LEGO 2 — Your Status */}
+          <div className="lego-card">
+            <div className="lego-label">{participant?.is_eliminated ? '💀' : '🟢'} Your Status</div>
+            <div className="your-status-row">
+              <div className="your-status-main">
+                <span className={`your-status-badge ${participant?.is_eliminated ? 'badge-out' : 'badge-alive'}`}>
+                  {participant?.is_eliminated ? 'Eliminated' : 'Still Alive'}
+                </span>
               </div>
-            ) : todayPickCount > 0 ? (
-              <div className="picks-locked">
-                🔒 Picks locked — {todayPickCount} of {todayInfo.picks_required} picks submitted.
+              <div className="your-status-stats">
+                <div className="ys-stat"><span className="ys-num">{totalPicks}</span><span className="ys-label">Picks Used</span></div>
+                <div className="ys-stat"><span className="ys-num">{wonPicks}</span><span className="ys-label">Wins</span></div>
               </div>
-            ) : (
-              <div className="picks-locked">
-                🔒 Picks locked — no picks submitted. Adam will assign your pick automatically.
-              </div>
-            )
-          ) : picksNeeded > 0 ? (
-            <div className="picks-needed">
-              <div className="picks-needed-text">
-                You need to submit <strong>{picksNeeded} more pick{picksNeeded > 1 ? 's' : ''}</strong> for today
-              </div>
-              <Link to="/picks" className="btn-picks">
-                Submit Picks →
-              </Link>
             </div>
-          ) : (
-            <div className="picks-done">
-              ✅ Picks submitted! <Link to="/picks" className="picks-change-link">Change picks →</Link>
-              <div className="picks-done-sub">You can update your picks any time before the deadline. Your most recent submission counts.</div>
-            </div>
-          )}
-        </div>
-      )}
 
-      {/* Two column layout: pick history left, recap right */}
-      <div className="dashboard-bottom">
-        <div className="dashboard-left">
-          <div className="picks-history-card">
-          <h2 className="section-title" style={{marginTop: 0}}>Your Pick History</h2>
-          {picks.length === 0 ? (
-            <div className="empty-state">
-              <p>No picks yet. {todayInfo ? <Link to="/picks">Submit your first pick →</Link> : 'Check back when the tournament starts.'}</p>
-            </div>
-          ) : (
-            <div className="picks-table">
-              <div className="picks-header-row">
-                <span>Date</span>
-                <span>Team</span>
-                <span>Seed</span>
-                <span>Result</span>
-              </div>
-              {picks.map(pick => (
-                <div key={pick.id} className={`pick-row result-${pick.result}`}>
-                  <span className="pick-date">{formatDate(pick.game_date)}</span>
-                  <span className="pick-team">
-                    {pick.teams?.name}
-                    {pick.is_auto_assigned && <span className="auto-badge">auto</span>}
-                  </span>
-                  <span className="pick-seed">#{pick.teams?.seed}</span>
-                  <span className={`pick-result ${pick.result}`}>
-                    {pick.result === 'won' ? '✅ Won' : pick.result === 'lost' ? '❌ Lost' : '⏳ Pending'}
-                  </span>
+            {todayInfo && !participant?.is_eliminated && (
+              <div className="today-inner">
+                <div className="today-header">
+                  <div>
+                    <div className="today-round">{todayInfo.round_name}</div>
+                    <div className="today-date">{fmtDate(todayInfo.game_date)}</div>
+                  </div>
+                  <div className="today-deadline">
+                    <div className="deadline-label">Deadline</div>
+                    <div className="deadline-time">{fmtDeadline(todayInfo.deadline)}</div>
+                  </div>
                 </div>
-              ))}
+                {deadlinePassed ? (
+                  todayPickCount >= todayInfo.picks_required ? (
+                    <div className="picks-done">✅ Picks submitted for today.</div>
+                  ) : (
+                    <div className="picks-locked">🔒 Picks locked — {todayPickCount} of {todayInfo.picks_required} submitted.</div>
+                  )
+                ) : picksNeeded > 0 ? (
+                  <div className="picks-needed">
+                    <div className="picks-needed-text">You need <strong>{picksNeeded} more pick{picksNeeded > 1 ? 's' : ''}</strong> for today</div>
+                    <Link to="/picks" className="btn-picks">Submit Picks →</Link>
+                  </div>
+                ) : (
+                  <div className="picks-done">
+                    ✅ Picks submitted! <Link to="/picks" className="picks-change-link">Change picks →</Link>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* My Pick History */}
+            {myPicks.length > 0 && (
+              <div className="my-picks-section">
+                <div className="my-picks-title">Your Pick History</div>
+                <div className="picks-table">
+                  <div className="picks-header-row">
+                    <span>Date</span><span>Team</span><span>Seed</span><span>Result</span>
+                  </div>
+                  {myPicks.map(pick => (
+                    <div key={pick.id} className={`pick-row result-${pick.result}`}>
+                      <span className="pick-date">{fmtDate(pick.game_date)}</span>
+                      <span className="pick-team">
+                        {pick.teams?.name}
+                        {pick.is_auto_assigned && <span className="auto-badge">auto</span>}
+                      </span>
+                      <span className="pick-seed">#{pick.teams?.seed}</span>
+                      <span className={`pick-result ${pick.result}`}>
+                        {pick.result === 'won' ? '✅ Won' : pick.result === 'lost' ? '❌ Lost' : '⏳'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* LEGO 3 — All Picks Grid */}
+          {dayMetas.length > 0 && (
+            <div className="lego-card">
+              <div className="lego-label">📊 All Picks</div>
+              <div className="picks-grid-wrap">
+                <table className="picks-grid">
+                  <thead>
+                    <tr>
+                      <th className="grid-name-col">Participant</th>
+                      {dayMetas.map(d => (
+                        <th key={d.game_date} className="grid-day-col">
+                          <div className="grid-day-label">{fmtRound(d.round_name)}</div>
+                          <div className="grid-day-date">{new Date(d.game_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allParticipants.map(p => (
+                      <tr key={p.id} className={`grid-row ${p.is_eliminated ? 'grid-row-out' : ''} ${p.id === participant?.id ? 'grid-row-me' : ''}`}>
+                        <td className="grid-name">
+                          {p.full_name}
+                          {p.id === participant?.id && <span className="me-tag">you</span>}
+                          {p.is_eliminated && <span className="grid-skull">💀</span>}
+                        </td>
+                        {dayMetas.map(d => {
+                          const pick = picksGrid[p.id]?.[d.game_date]
+                          if (!pick) return <td key={d.game_date} className="grid-cell grid-cell-empty">—</td>
+                          return (
+                            <td key={d.game_date} className={`grid-cell grid-cell-${pick.result}`}>
+                              <div className="grid-team">{pick.teams?.name}</div>
+                              <div className="grid-seed">#{pick.teams?.seed}</div>
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
-          </div>{/* picks-history-card */}
-        </div>{/* dashboard-left */}
+        </div>
 
-        {latestRecap && (
-          <div className="dashboard-right">
-            <div className="dashboard-recap-card">
-              <div className="recap-day-label">📝 Latest Recap</div>
+        {/* ── RIGHT 1/3 ── */}
+        <div className="hq-right">
+
+          {/* Recap */}
+          {latestRecap && (
+            <div className="lego-card">
+              <div className="lego-label">📝 Latest Recap</div>
               <div className="recap-date-label">
                 {new Date(latestRecap.game_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </div>
               <h3 className="recap-card-title">{latestRecap.title}</h3>
               <div className="recap-card-body">
-                {latestRecap.body.replace(/\[img:[^\]]+\]/g, '').slice(0, 300)}
-                {latestRecap.body.replace(/\[img:[^\]]+\]/g, '').length > 300 ? '...' : ''}
+                {(latestRecap.body || '').replace(/\[img:[^\]]+\]/g, '').replace(/https?:\/\/\S+/g, '').slice(0, 280)}
+                {(latestRecap.body || '').length > 280 ? '…' : ''}
               </div>
-              {latestRecap.image_urls?.[0] && (
-                <img
-                  src={latestRecap.image_urls[0]}
-                  alt="Recap"
-                  className="recap-card-image"
-                  onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
-                />
-              )}
               <Link to="/recaps" className="recap-read-more">Read full recap →</Link>
             </div>
+          )}
+
+          {/* Box Scores */}
+          <div className="lego-card">
+            <div className="lego-label">🏀 Today's Games</div>
+            {scoresLoading ? (
+              <div className="scores-loading">Loading scores…</div>
+            ) : espnGames.length === 0 ? (
+              <div className="scores-empty">No games scheduled today.</div>
+            ) : (
+              <div className="scores-list">
+                {espnGames.map(game => {
+                  const comp = game.competitions[0]
+                  const status = comp.status
+                  const home = comp.competitors.find(c => c.homeAway === 'home')
+                  const away = comp.competitors.find(c => c.homeAway === 'away')
+                  const isLive = status.type.name === 'STATUS_IN_PROGRESS'
+                  const isFinal = status.type.completed
+                  const isScheduled = !isLive && !isFinal
+
+                  return (
+                    <div key={game.id} className={`score-card ${isLive ? 'score-live' : ''}`}>
+                      <div className="score-status">
+                        {isLive && <span className="live-dot" />}
+                        <span className={`score-status-text ${isLive ? 'live-text' : ''}`}>
+                          {isLive ? `${status.type.shortDetail} · ${status.displayClock}` : status.type.shortDetail}
+                        </span>
+                      </div>
+                      <div className="score-matchup">
+                        <div className={`score-team ${away?.winner ? 'score-winner' : isFinal && !away?.winner ? 'score-loser' : ''}`}>
+                          <span className="score-team-name">{away?.team.abbreviation}</span>
+                          {!isScheduled && <span className="score-pts">{away?.score}</span>}
+                        </div>
+                        <div className={`score-team ${home?.winner ? 'score-winner' : isFinal && !home?.winner ? 'score-loser' : ''}`}>
+                          <span className="score-team-name">{home?.team.abbreviation}</span>
+                          {!isScheduled && <span className="score-pts">{home?.score}</span>}
+                        </div>
+                        {isScheduled && (
+                          <div className="score-time">{fmtGameTime(game.date)}</div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Rules link */}
       <div className="rules-link-bar">
         📋 <Link to="/rules">View full pool rules</Link>
       </div>
