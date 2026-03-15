@@ -38,21 +38,16 @@ body {
 .header-brand {
   display: flex;
   align-items: center;
-  gap: 8px;
   text-decoration: none;
   flex-shrink: 0;
 }
 
-.brand-icon { font-size: 22px; }
-
-.brand-name {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 22px;
-  color: #fff;
-  letter-spacing: 1px;
+.brand-logo {
+  height: 44px;
+  width: 44px;
+  object-fit: contain;
+  border-radius: 50%;
 }
-
-.brand-year { color: #ff6b00; }
 
 /* Desktop nav */
 .desktop-nav {

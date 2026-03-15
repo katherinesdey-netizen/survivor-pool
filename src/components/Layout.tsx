@@ -21,8 +21,7 @@ export default function Layout() {
       <header className="app-header">
         <div className="header-inner">
           <div className="header-brand">
-            <span className="brand-icon">🏀</span>
-            <span className="brand-name">Survivor Pool <span className="brand-year">'26</span></span>
+            <img src="/logo.png" alt="March Madness Survivor Pool" className="brand-logo" />
           </div>
 
           {/* Desktop nav */}
