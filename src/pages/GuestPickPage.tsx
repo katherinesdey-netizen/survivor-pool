@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import './GuestPickPage.css'
 
@@ -6,6 +6,7 @@ interface TournamentDay {
   game_date: string
   round_name: string
   deadline: string | null
+  picks_required: number
 }
 
 interface Team {
@@ -13,7 +14,6 @@ interface Team {
   name: string
   seed: number
   region: string
-  is_eliminated: boolean
 }
 
 interface Participant {
@@ -23,12 +23,12 @@ interface Participant {
   is_eliminated: boolean
 }
 
-interface ExistingPick {
+interface SubmittedPick {
   team_id: number
   teams: { name: string; seed: number; region: string } | null
 }
 
-type Step = 'email' | 'picking' | 'confirming' | 'done' | 'no_games' | 'already_picked' | 'error'
+type Step = 'email' | 'picking' | 'done' | 'already_picked' | 'no_games'
 
 const REGIONS = ['East', 'West', 'South', 'Midwest']
 
@@ -42,14 +42,13 @@ export default function GuestPickPage() {
   const [today, setToday] = useState<TournamentDay | null>(null)
   const [teams, setTeams] = useState<Team[]>([])
   const [usedTeamIds, setUsedTeamIds] = useState<Set<number>>(new Set())
-  const [existingPick, setExistingPick] = useState<ExistingPick | null>(null)
+  const [existingPicks, setExistingPicks] = useState<SubmittedPick[]>([])
 
-  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null)
+  // Multi-select: up to picks_required teams
+  const [selectedTeams, setSelectedTeams] = useState<Team[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
-  const [doneData, setDoneData] = useState<{ teamName: string; seed: number; round: string } | null>(null)
-
-  const [pageError, setPageError] = useState('')
+  const [doneData, setDoneData] = useState<{ picks: { name: string; seed: number; region: string }[]; round: string } | null>(null)
 
   async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -59,7 +58,6 @@ export default function GuestPickPage() {
     try {
       const trimmed = email.trim().toLowerCase()
 
-      // Look up participant
       const { data: p } = await supabase
         .from('participants')
         .select('id, full_name, is_paid, is_eliminated')
@@ -84,32 +82,28 @@ export default function GuestPickPage() {
 
       setParticipant(p)
 
-      // Find today's (or next upcoming) tournament day
+      // Find the next open tournament day (today or future, deadline not yet passed)
       const todayStr = new Date().toISOString().split('T')[0]
       const { data: dayData } = await supabase
         .from('tournament_days')
-        .select('game_date, round_name, deadline')
+        .select('game_date, round_name, deadline, picks_required')
         .gte('game_date', todayStr)
         .order('game_date', { ascending: true })
-        .limit(1)
 
-      const day = dayData?.[0] ?? null
+      // Find the first day whose deadline hasn't passed
+      const now = new Date()
+      const day = (dayData || []).find(d =>
+        !d.deadline || now < new Date(d.deadline)
+      ) ?? null
 
       if (!day) {
-        setToday(null)
+        setToday(dayData?.[0] ?? null) // still set for "deadline passed" message
         setStep('no_games')
         setEmailLoading(false)
         return
       }
 
       setToday(day)
-
-      // Check if deadline has passed
-      if (day.deadline && new Date() > new Date(day.deadline)) {
-        setStep('no_games')
-        setEmailLoading(false)
-        return
-      }
 
       // Fetch all non-eliminated teams
       const { data: teamsData } = await supabase
@@ -120,19 +114,27 @@ export default function GuestPickPage() {
 
       setTeams(teamsData || [])
 
-      // Fetch this participant's already-used team IDs (all picks ever)
+      // All picks this participant has ever made
       const { data: allPicks } = await supabase
         .from('picks')
         .select('team_id, game_date, teams(name, seed, region)')
         .eq('participant_id', p.id)
 
-      const used = new Set<number>((allPicks || []).map((pk: any) => pk.team_id))
+      // Teams used on OTHER days (can't reuse)
+      const used = new Set<number>(
+        (allPicks || [])
+          .filter((pk: any) => pk.game_date !== day.game_date)
+          .map((pk: any) => pk.team_id)
+      )
       setUsedTeamIds(used)
 
-      // Check if they already have a pick for today
-      const todayPick = (allPicks || []).find((pk: any) => pk.game_date === day.game_date) as ExistingPick | undefined
-      if (todayPick) {
-        setExistingPick(todayPick)
+      // Picks already submitted for today
+      const todayPicks = (allPicks || []).filter((pk: any) => pk.game_date === day.game_date) as SubmittedPick[]
+      const required = day.picks_required ?? 1
+
+      setExistingPicks(todayPicks)
+
+      if (todayPicks.length >= required) {
         setStep('already_picked')
       } else {
         setStep('picking')
@@ -145,8 +147,24 @@ export default function GuestPickPage() {
     setEmailLoading(false)
   }
 
-  async function handleSubmit() {
-    if (!selectedTeam || !today || !participant) return
+  function toggleTeam(team: Team) {
+    const required = today?.picks_required ?? 1
+    setSelectedTeams(prev => {
+      const already = prev.find(t => t.id === team.id)
+      if (already) return prev.filter(t => t.id !== team.id)
+      if (prev.length >= required) {
+        // Replace the last selection if at max
+        return [...prev.slice(0, required - 1), team]
+      }
+      return [...prev, team]
+    })
+  }
+
+  async function handleSubmit(clearFirst = false) {
+    if (!today || !participant || selectedTeams.length === 0) return
+    const required = today.picks_required ?? 1
+    if (selectedTeams.length !== required) return
+
     setSubmitting(true)
     setSubmitError('')
 
@@ -156,8 +174,9 @@ export default function GuestPickPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: email.trim().toLowerCase(),
-          team_id: selectedTeam.id,
+          team_ids: selectedTeams.map(t => t.id),
           game_date: today.game_date,
+          clear_first: clearFirst,
         }),
       })
 
@@ -169,11 +188,7 @@ export default function GuestPickPage() {
         return
       }
 
-      setDoneData({
-        teamName: json.team_name,
-        seed: json.team_seed,
-        round: json.round_name,
-      })
+      setDoneData({ picks: json.picks, round: json.round_name })
       setStep('done')
     } catch (err) {
       setSubmitError('Network error. Please check your connection and try again.')
@@ -182,11 +197,16 @@ export default function GuestPickPage() {
     setSubmitting(false)
   }
 
+  function startChanging() {
+    setExistingPicks([])
+    setSelectedTeams([])
+    setSubmitError('')
+    setStep('picking')
+  }
+
   function formatDeadline(iso: string) {
     return new Date(iso).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      timeZoneName: 'short',
+      hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
     })
   }
 
@@ -196,11 +216,15 @@ export default function GuestPickPage() {
     })
   }
 
+  const required = today?.picks_required ?? 1
+  const selectionComplete = selectedTeams.length === required
+  const firstName = participant?.full_name?.split(' ')[0]
+
   return (
     <div className="gp-page">
       <div className="gp-bg" />
-
       <div className="gp-card">
+
         {/* Header */}
         <div className="gp-header">
           <div className="gp-emoji">🏀</div>
@@ -208,7 +232,7 @@ export default function GuestPickPage() {
           <p className="gp-subtitle">2026 · Adam's Pool</p>
         </div>
 
-        {/* ── Step: Email ── */}
+        {/* ── Email ── */}
         {step === 'email' && (
           <div className="gp-section">
             <p className="gp-intro">Enter your email to look up your entry and submit your pick.</p>
@@ -234,13 +258,13 @@ export default function GuestPickPage() {
           </div>
         )}
 
-        {/* ── Step: No games / deadline passed ── */}
+        {/* ── No games / deadline passed ── */}
         {step === 'no_games' && (
           <div className="gp-section gp-center">
             <div className="gp-big-emoji">📅</div>
-            <h2>No picks today</h2>
+            <h2>No picks open right now</h2>
             {today ? (
-              <p>The deadline for <strong>{today.round_name}</strong> has passed.</p>
+              <p>The deadline for <strong>{today.round_name}</strong> has passed. Check back for the next round!</p>
             ) : (
               <p>There are no tournament games scheduled right now. Check back when the next round begins!</p>
             )}
@@ -250,27 +274,27 @@ export default function GuestPickPage() {
           </div>
         )}
 
-        {/* ── Step: Already picked today ── */}
-        {step === 'already_picked' && existingPick && today && (
+        {/* ── Already picked ── */}
+        {step === 'already_picked' && today && (
           <div className="gp-section">
-            <div className="gp-greeting">Hey, {participant?.full_name?.split(' ')[0]}! 👋</div>
-            <div className="gp-already-card">
-              <div className="gp-already-label">Your pick for {today.round_name}</div>
-              <div className="gp-already-team">
-                <span className="gp-seed">#{existingPick.teams?.seed}</span>
-                <span className="gp-team-name">{existingPick.teams?.name}</span>
-              </div>
-              <div className="gp-already-region">{existingPick.teams?.region} Region</div>
+            <div className="gp-greeting">Hey, {firstName}! 👋</div>
+            <div className="gp-round-info">
+              <div className="gp-round-name">{today.round_name}</div>
+              <div className="gp-round-date">{formatDate(today.game_date)}</div>
+            </div>
+            <div className="gp-already-label-outer">Your pick{existingPicks.length > 1 ? 's' : ''} for today</div>
+            <div className="gp-existing-picks">
+              {existingPicks.map((pk, i) => (
+                <div key={i} className="gp-existing-pick-row">
+                  <span className="gp-seed">#{pk.teams?.seed}</span>
+                  <span className="gp-team-name">{pk.teams?.name}</span>
+                  <span className="gp-region-tag">{pk.teams?.region}</span>
+                </div>
+              ))}
             </div>
             {today.deadline && new Date() < new Date(today.deadline) && (
-              <button
-                className="gp-btn-ghost"
-                onClick={() => {
-                  setExistingPick(null)
-                  setStep('picking')
-                }}
-              >
-                Change my pick
+              <button className="gp-btn-ghost" onClick={startChanging}>
+                Change my picks
               </button>
             )}
             <a href="/standings" className="gp-back-link" style={{ marginTop: '8px' }}>
@@ -279,20 +303,26 @@ export default function GuestPickPage() {
           </div>
         )}
 
-        {/* ── Step: Pick a team ── */}
+        {/* ── Pick teams ── */}
         {step === 'picking' && today && (
           <div className="gp-section">
-            <div className="gp-greeting">Hey, {participant?.full_name?.split(' ')[0]}! 👋</div>
+            <div className="gp-greeting">Hey, {firstName}! 👋</div>
             <div className="gp-round-info">
               <div className="gp-round-name">{today.round_name}</div>
               <div className="gp-round-date">{formatDate(today.game_date)}</div>
               {today.deadline && (
-                <div className="gp-deadline">
-                  ⏰ Deadline: <strong>{formatDeadline(today.deadline)}</strong>
-                </div>
+                <div className="gp-deadline">⏰ Deadline: <strong>{formatDeadline(today.deadline)}</strong></div>
               )}
             </div>
-            <p className="gp-pick-prompt">Pick one team to advance. You can't reuse a team you've already picked.</p>
+
+            <div className="gp-pick-counter">
+              {required > 1 ? (
+                <>Pick <strong>{required} teams</strong> — {selectedTeams.length} of {required} selected</>
+              ) : (
+                <>Pick <strong>1 team</strong> to advance today</>
+              )}
+              <span className="gp-counter-note">You can't reuse a team from a previous day.</span>
+            </div>
 
             {REGIONS.map(region => {
               const regionTeams = teams.filter(t => t.region === region)
@@ -303,19 +333,17 @@ export default function GuestPickPage() {
                   <div className="gp-team-grid">
                     {regionTeams.map(team => {
                       const isUsed = usedTeamIds.has(team.id)
-                      const isSelected = selectedTeam?.id === team.id
+                      const isSelected = selectedTeams.some(t => t.id === team.id)
                       return (
                         <button
                           key={team.id}
-                          className={`gp-team-btn
-                            ${isSelected ? 'gp-selected' : ''}
-                            ${isUsed ? 'gp-used' : ''}
-                          `}
+                          className={`gp-team-btn ${isSelected ? 'gp-selected' : ''} ${isUsed ? 'gp-used' : ''}`}
                           disabled={isUsed}
-                          onClick={() => setSelectedTeam(isSelected ? null : team)}
+                          onClick={() => toggleTeam(team)}
                         >
                           <span className="gp-btn-seed">#{team.seed}</span>
                           <span className="gp-btn-name">{team.name}</span>
+                          {isSelected && <span className="gp-check">✓</span>}
                           {isUsed && <span className="gp-used-tag">used</span>}
                         </button>
                       )
@@ -325,44 +353,57 @@ export default function GuestPickPage() {
               )
             })}
 
-            {selectedTeam && (
+            {/* Sticky confirm bar — shows as selections are made */}
+            {selectedTeams.length > 0 && (
               <div className="gp-confirm-bar">
-                <div className="gp-confirm-pick">
-                  <span className="gp-confirm-seed">#{selectedTeam.seed}</span>
-                  <span className="gp-confirm-name">{selectedTeam.name}</span>
-                  <span className="gp-confirm-region">{selectedTeam.region}</span>
+                <div className="gp-confirm-picks">
+                  {selectedTeams.map((t, i) => (
+                    <div key={i} className="gp-confirm-pick-row">
+                      <span className="gp-confirm-seed">#{t.seed}</span>
+                      <span className="gp-confirm-name">{t.name}</span>
+                      <span className="gp-confirm-region">{t.region}</span>
+                    </div>
+                  ))}
+                  {required > 1 && selectedTeams.length < required && (
+                    <div className="gp-confirm-need-more">
+                      Pick {required - selectedTeams.length} more team{required - selectedTeams.length > 1 ? 's' : ''}…
+                    </div>
+                  )}
                 </div>
                 {submitError && <p className="gp-error">{submitError}</p>}
                 <button
                   className="gp-btn-primary"
-                  onClick={handleSubmit}
-                  disabled={submitting}
+                  onClick={() => handleSubmit(existingPicks.length > 0)}
+                  disabled={submitting || !selectionComplete}
                 >
-                  {submitting ? 'Submitting…' : 'Submit Pick →'}
+                  {submitting ? 'Submitting…' : selectionComplete ? `Submit Pick${required > 1 ? 's' : ''} →` : `Select ${required - selectedTeams.length} more…`}
                 </button>
               </div>
             )}
           </div>
         )}
 
-        {/* ── Step: Done ── */}
+        {/* ── Done ── */}
         {step === 'done' && doneData && (
           <div className="gp-section gp-center">
             <div className="gp-big-emoji">✅</div>
-            <h2>Pick submitted!</h2>
+            <h2>Pick{doneData.picks.length > 1 ? 's' : ''} submitted!</h2>
             <div className="gp-done-card">
               <div className="gp-done-round">{doneData.round}</div>
-              <div className="gp-done-team">
-                <span className="gp-seed">#{doneData.seed}</span>
-                <span className="gp-team-name">{doneData.teamName}</span>
-              </div>
+              {doneData.picks.map((p, i) => (
+                <div key={i} className="gp-done-team">
+                  <span className="gp-seed">#{p.seed}</span>
+                  <span className="gp-team-name">{p.name}</span>
+                </div>
+              ))}
             </div>
-            <p className="gp-done-note">Good luck, {participant?.full_name?.split(' ')[0]}!</p>
+            <p className="gp-done-note">Good luck, {firstName}!</p>
             <a href="/standings" className="gp-btn-secondary" style={{ marginTop: '8px' }}>
               View Standings →
             </a>
           </div>
         )}
+
       </div>
     </div>
   )

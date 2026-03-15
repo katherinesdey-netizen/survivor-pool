@@ -462,3 +462,97 @@
 .gp-center strong {
   color: #fff;
 }
+
+/* ── Pick counter ─────────────────────────────────────────── */
+.gp-pick-counter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  color: rgba(255,255,255,0.65);
+  text-align: center;
+}
+
+.gp-pick-counter strong {
+  color: #fff;
+}
+
+.gp-counter-note {
+  font-size: 12px;
+  color: rgba(255,255,255,0.3);
+}
+
+/* ── Checkmark on selected team ───────────────────────────── */
+.gp-check {
+  font-size: 14px;
+  color: #ff6b00;
+  flex-shrink: 0;
+}
+
+/* ── Region tag on existing picks ────────────────────────── */
+.gp-region-tag {
+  font-size: 11px;
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.4);
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+/* ── Already-picked card (multi-pick layout) ─────────────── */
+.gp-already-label-outer {
+  font-size: 12px;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  text-align: center;
+}
+
+.gp-existing-picks {
+  background: rgba(74,222,128,0.07);
+  border: 1px solid rgba(74,222,128,0.2);
+  border-radius: 14px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gp-existing-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gp-existing-pick-row .gp-seed {
+  min-width: 30px;
+  flex-shrink: 0;
+}
+
+.gp-existing-pick-row .gp-team-name {
+  font-size: 18px;
+  flex: 1;
+}
+
+/* ── Confirm bar multi-pick rows ─────────────────────────── */
+.gp-confirm-picks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gp-confirm-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gp-confirm-need-more {
+  font-size: 13px;
+  color: rgba(255,255,255,0.35);
+  font-style: italic;
+  padding: 2px 0;
+}
