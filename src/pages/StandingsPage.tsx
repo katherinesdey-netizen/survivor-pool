@@ -78,9 +78,9 @@ export default function StandingsPage() {
   }
 
   // Returns true when picks for this day should be visible
-  function isRevealed(day: TournamentDay): boolean {
-    if (!day.deadline) return true  // no deadline set → always show
-    return now >= new Date(day.deadline)
+  // TODO: re-enable deadline check before tournament starts
+  function isRevealed(_day: TournamentDay): boolean {
+    return true
   }
 
   // Returns true if this day has any games yet (date is today or past)
