@@ -129,7 +129,7 @@ export default function GuestPickPage() {
       setUsedTeamIds(used)
 
       // Picks already submitted for today
-      const todayPicks = (allPicks || []).filter((pk: any) => pk.game_date === day.game_date) as SubmittedPick[]
+      const todayPicks = (allPicks || []).filter((pk: any) => pk.game_date === day.game_date) as unknown as SubmittedPick[]
       const required = day.picks_required ?? 1
 
       setExistingPicks(todayPicks)
