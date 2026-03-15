@@ -123,11 +123,6 @@ export default function StandingsPage() {
       return <td key={key} className="pick-cell cell-after-elim" />
     }
 
-    if (!isActive(day)) {
-      // Future round — not started yet
-      return <td key={key} className="pick-cell cell-upcoming"><span className="cell-upcoming-label">—</span></td>
-    }
-
     const dayPicks = getPicksForDay(p.id, day.game_date)
     const revealed = isRevealed(day)
 
@@ -138,6 +133,11 @@ export default function StandingsPage() {
           <span className="cell-lock">🔒</span>
         </td>
       )
+    }
+
+    if (!isActive(day) && dayPicks.length === 0) {
+      // Future round with no picks yet
+      return <td key={key} className="pick-cell cell-upcoming"><span className="cell-upcoming-label">—</span></td>
     }
 
     if (dayPicks.length === 0) {
