@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 import './AdminPage.css'
 
 interface Participant {
@@ -45,12 +46,13 @@ type Tab = 'participants' | 'picks' | 'assign' | 'recaps'
 interface Recap {
   id: number
   title: string
-  body: string
+  body?: string
   image_urls: string[]
   game_date: string
 }
 
 export default function AdminPage() {
+  const { session } = useAuth()
   const [tab, setTab] = useState<Tab>('participants')
   const [participants, setParticipants] = useState<Participant[]>([])
   const [teams, setTeams] = useState<Team[]>([])
@@ -83,7 +85,7 @@ export default function AdminPage() {
       supabase.from('teams').select('*').eq('is_eliminated', false).order('seed'),
       supabase.from('tournament_days').select('*').order('game_date'),
       supabase.from('picks').select('id, participant_id, team_id, game_date, result, is_auto_assigned, teams(name, seed), participants(full_name)').order('game_date', { ascending: false }),
-      supabase.from('recaps').select('*').order('game_date', { ascending: false })
+      supabase.from('recaps').select('id, title, game_date, image_urls').order('game_date', { ascending: false })
     ])
 
     setParticipants(pData || [])
@@ -229,25 +231,48 @@ export default function AdminPage() {
 
     setSaving('recap')
 
-    // .insert() without .select() uses Prefer:return=minimal — no response body,
-    // so it never hangs regardless of how long the text is.
-    const { error } = await supabase
-      .from('recaps')
-      .insert({
-        title: cleanText(recapTitle.trim()),
-        body: cleanText(recapBody.trim()),
-        game_date: recapDate,
-        image_urls: [],
-      })
+    try {
+      // Bypass Supabase JS client and use raw fetch with Prefer:return=minimal
+      // so the server returns 204 No Content — no response body to hang on.
+      // Use session from AuthContext — avoids a second getSession() call that
+      // causes Web Lock conflicts with the auth client.
+      const res = await fetch(
+        `${process.env.REACT_APP_SUPABASE_URL}/rest/v1/recaps`,
+        {
+          method: 'POST',
+          headers: {
+            'apikey': process.env.REACT_APP_SUPABASE_ANON_KEY!,
+            'Authorization': `Bearer ${session!.access_token}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify({
+            title: cleanText(recapTitle.trim()),
+            body: cleanText(recapBody.trim()),
+            game_date: recapDate,
+            image_urls: [],
+          }),
+        }
+      )
 
-    if (error) {
-      showMsg('error', error.message)
-    } else {
-      showMsg('success', 'Recap posted!')
-      setRecapTitle('')
-      setRecapBody('')
-      setRecapDate(new Date().toISOString().split('T')[0])
-      await fetchData()
+      if (!res.ok) {
+        const errText = await res.text()
+        showMsg('error', errText || `Error ${res.status}`)
+      } else {
+        showMsg('success', 'Recap posted!')
+        setRecaps(prev => [{
+          id: Date.now(),
+          title: cleanText(recapTitle.trim()),
+          body: cleanText(recapBody.trim()),
+          game_date: recapDate,
+          image_urls: [],
+        }, ...prev])
+        setRecapTitle('')
+        setRecapBody('')
+        setRecapDate(new Date().toISOString().split('T')[0])
+      }
+    } catch (err: any) {
+      showMsg('error', err.message || 'Network error')
     }
 
     setSaving(null)
@@ -548,7 +573,7 @@ export default function AdminPage() {
                     <div className="recap-admin-info">
                       <div className="recap-admin-date">{formatDate(recap.game_date)}</div>
                       <div className="recap-admin-title">{recap.title}</div>
-                      <div className="recap-admin-preview">{recap.body.slice(0, 100)}...</div>
+                      <div className="recap-admin-preview">{recap.body ? recap.body.slice(0, 100) + '...' : '(preview not available)'}</div>
                     </div>
                     <button
                       className="action-btn btn-danger"
