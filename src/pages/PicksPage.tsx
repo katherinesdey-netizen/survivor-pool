@@ -17,330 +17,308 @@ interface TournamentDay {
   round_name: string
   picks_required: number
   deadline: string
-  is_complete: boolean
 }
 
 interface ExistingPick {
   id: number
   team_id: number
   game_date: string
-  result: string
 }
+
+// Standard NCAA bracket — seed pairings per region, in bracket order (top to bottom)
+const R64_PODS: [number,number][] = [[1,16],[8,9],[5,12],[4,13],[6,11],[3,14],[7,10],[2,15]]
+
+// For each later round, which seed groups feed the top and bottom of each matchup
+const R32_GROUPS  = [
+  {top:[1,16],   bottom:[8,9]  }, {top:[5,12],  bottom:[4,13]  },
+  {top:[6,11],   bottom:[3,14] }, {top:[7,10],  bottom:[2,15]  },
+]
+const S16_GROUPS  = [
+  {top:[1,16,8,9], bottom:[5,12,4,13]  },
+  {top:[6,11,3,14],bottom:[7,10,2,15]  },
+]
+const E8_GROUPS   = [
+  {top:[1,16,8,9,5,12,4,13], bottom:[6,11,3,14,7,10,2,15]},
+]
+
+const REGIONS = ['East','West','South','Midwest']
+
+// Bracket layout constants
+const TH  = 34   // team slot height (px)
+const TG  = 2    // gap between two teams in same matchup
+const MH  = TH*2 + TG       // matchup height = 70
+const MG  = 12              // gap between adjacent R64 matchups
+const UNIT = MH + MG        // = 82
+
+// Spacers (top pad before first matchup, gap between matchups per round)
+const SPACERS = [
+  { top: MG/2,          between: MG          }, // R64
+  { top: UNIT/2-MH/2,   between: UNIT-MH     }, // R32
+  { top: UNIT-MH/2,     between: UNIT*2-MH   }, // S16
+  { top: UNIT*2-MH/2,   between: 0           }, // E8
+]
 
 export default function PicksPage() {
   const { participant } = useAuth()
-  const [teams, setTeams] = useState<Team[]>([])
-  const [todayInfo, setTodayInfo] = useState<TournamentDay | null>(null)
+  const [teams, setTeams]               = useState<Team[]>([])
+  const [todayInfo, setTodayInfo]       = useState<TournamentDay | null>(null)
   const [existingPicks, setExistingPicks] = useState<ExistingPick[]>([])
-  const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([])
-  const [savedTeamIds, setSavedTeamIds] = useState<number[]>([]) // what's actually in the DB
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [saveMsg, setSaveMsg] = useState<{type: 'success'|'error', text: string} | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedIds, setSelectedIds]   = useState<number[]>([])
+  const [savedIds, setSavedIds]         = useState<number[]>([])
+  const [loading, setLoading]           = useState(true)
+  const [saving, setSaving]             = useState(false)
+  const [msg, setMsg] = useState<{type:'success'|'error', text:string}|null>(null)
+  const [activeRegion, setActiveRegion] = useState(REGIONS[0])
 
   useEffect(() => {
     if (!participant) return
     fetchData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line
   }, [participant])
 
   async function fetchData() {
     setLoading(true)
     try {
-      // Get next upcoming tournament day
       const today = new Date().toISOString().split('T')[0]
       const { data: dayData } = await supabase
         .from('tournament_days')
-        .select('id, game_date, round_name, picks_required, deadline, is_complete')
-        .gte('game_date', today)
-        .order('game_date', { ascending: true })
-        .limit(1)
+        .select('id, game_date, round_name, picks_required, deadline')
+        .gte('game_date', today).order('game_date').limit(1)
 
-      if (!dayData || dayData.length === 0) {
-        return
-      }
-
+      if (!dayData?.length) { setLoading(false); return }
       const day = dayData[0]
       setTodayInfo(day)
 
-      // Get all teams still in the tournament
-      const { data: teamsData } = await supabase
-        .from('teams')
-        .select('*')
-        .eq('is_eliminated', false)
-        .order('seed', { ascending: true })
+      const [{ data: teamsData }, { data: picksData }] = await Promise.all([
+        supabase.from('teams').select('id,name,seed,region,is_eliminated').order('seed'),
+        supabase.from('picks').select('id,team_id,game_date').eq('participant_id', participant!.id),
+      ])
 
       setTeams(teamsData || [])
-
-      // Get ALL picks this participant has ever made
-      const { data: allPicks } = await supabase
-        .from('picks')
-        .select('id, team_id, game_date, result')
-        .eq('participant_id', participant!.id)
-
-      setExistingPicks(allPicks || [])
-
-      // Pre-select any picks already submitted for today
-      const todayPicks = (allPicks || []).filter(p => p.game_date === day.game_date)
-      setSelectedTeamIds(todayPicks.map(p => p.team_id))
-      setSavedTeamIds(todayPicks.map(p => p.team_id))
-    } catch (err) {
-      console.error('fetchData error:', err)
-    } finally {
-      setLoading(false)
-    }
+      setExistingPicks(picksData || [])
+      const todayPicks = (picksData || []).filter(p => p.game_date === day.game_date)
+      setSelectedIds(todayPicks.map(p => p.team_id))
+      setSavedIds(todayPicks.map(p => p.team_id))
+    } catch(e) { console.error(e) }
+    finally { setLoading(false) }
   }
 
-  function isDeadlinePassed(deadline: string) {
-    return new Date() > new Date(deadline)
-  }
-
-  function formatDate(dateStr: string) {
-    return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', {
-      weekday: 'long', month: 'long', day: 'numeric'
-    })
-  }
-
-  function formatDeadline(deadline: string) {
-    return new Date(deadline).toLocaleString('en-US', {
-      weekday: 'short', month: 'short', day: 'numeric',
-      hour: 'numeric', minute: '2-digit', timeZoneName: 'short'
-    })
-  }
-
-  // Teams already picked in previous days (not today)
-  const previouslyPickedTeamIds = new Set(
-    existingPicks
-      .filter(p => todayInfo && p.game_date !== todayInfo.game_date)
-      .map(p => p.team_id)
-  )
-
-  // Teams picked today (already saved)
-  const todaysSavedPickTeamIds = new Set(
-    existingPicks
-      .filter(p => todayInfo && p.game_date === todayInfo.game_date)
-      .map(p => p.team_id)
-  )
+  const deadlinePassed = todayInfo ? new Date() > new Date(todayInfo.deadline) : false
+  const usedIds = new Set(existingPicks.filter(p => todayInfo && p.game_date !== todayInfo.game_date).map(p => p.team_id))
+  const selectionChanged = !(selectedIds.length === savedIds.length && selectedIds.every(id => savedIds.includes(id)))
 
   function toggleTeam(teamId: number) {
-    if (!todayInfo) return
-    const deadlinePassed = isDeadlinePassed(todayInfo.deadline)
-    if (deadlinePassed) return
-
-    const picksRequired = todayInfo.picks_required
-
-    if (selectedTeamIds.includes(teamId)) {
-      // Deselect
-      setSelectedTeamIds(prev => prev.filter(id => id !== teamId))
+    if (!todayInfo || deadlinePassed) return
+    if (selectedIds.includes(teamId)) {
+      setSelectedIds(p => p.filter(id => id !== teamId))
     } else {
-      // Select — enforce max picks
-      if (selectedTeamIds.length >= picksRequired) {
-        setSaveMsg({
-          type: 'error',
-          text: `You can only pick ${picksRequired} team${picksRequired > 1 ? 's' : ''} today. Uncheck a selection first to swap it.`
-        })
-        setTimeout(() => setSaveMsg(null), 4000)
+      if (selectedIds.length >= todayInfo.picks_required) {
+        setMsg({ type:'error', text:`Max ${todayInfo.picks_required} pick${todayInfo.picks_required>1?'s':''} — deselect one first.` })
+        setTimeout(() => setMsg(null), 3000)
         return
       }
-      setSelectedTeamIds(prev => [...prev, teamId])
+      setSelectedIds(p => [...p, teamId])
     }
   }
 
   async function handleSave() {
     if (!todayInfo || !participant) return
-    setSaving(true)
-    setSaveMsg(null)
-
-    // Validate
-    if (selectedTeamIds.length !== todayInfo.picks_required) {
-      setSaveMsg({
-        type: 'error',
-        text: `Please select exactly ${todayInfo.picks_required} team${todayInfo.picks_required > 1 ? 's' : ''} before saving.`
-      })
-      setSaving(false)
+    if (selectedIds.length !== todayInfo.picks_required) {
+      setMsg({ type:'error', text:`Select exactly ${todayInfo.picks_required} team${todayInfo.picks_required>1?'s':''}.` })
       return
     }
-
-    // Delete today's existing picks first, then re-insert
-    await supabase
-      .from('picks')
-      .delete()
-      .eq('participant_id', participant.id)
-      .eq('game_date', todayInfo.game_date)
-
-    const newPicks = selectedTeamIds.map(teamId => ({
-      participant_id: participant.id,
-      team_id: teamId,
-      game_date: todayInfo.game_date,
-      result: 'pending'
-    }))
-
-    const { error } = await supabase
-      .from('picks')
-      .insert(newPicks)
-
+    setSaving(true); setMsg(null)
+    await supabase.from('picks').delete().eq('participant_id', participant.id).eq('game_date', todayInfo.game_date)
+    const { error } = await supabase.from('picks').insert(
+      selectedIds.map(tid => ({ participant_id: participant.id, team_id: tid, game_date: todayInfo.game_date, result:'pending' }))
+    )
     if (error) {
-      setSaveMsg({ type: 'error', text: 'Something went wrong saving your picks. Please try again.' })
+      setMsg({ type:'error', text:'Save failed. Please try again.' })
     } else {
-      setSavedTeamIds([...selectedTeamIds]) // mark current selection as saved
-      setSaveMsg({ type: 'success', text: '✅ Picks saved! To change them, uncheck a team below and select a different one. Your most recent submission counts.' })
+      setSavedIds([...selectedIds])
+      setMsg({ type:'success', text:'✅ Picks saved! You can update them before the deadline.' })
       await fetchData()
     }
-
     setSaving(false)
   }
 
-  // Filter teams by search
-  const filteredTeams = teams.filter(t =>
-    t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    t.region.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  // Build region → seed → team lookup
+  const byRegionSeed: Record<string, Record<number, Team>> = {}
+  teams.forEach(t => {
+    if (!byRegionSeed[t.region]) byRegionSeed[t.region] = {}
+    byRegionSeed[t.region][t.seed] = t
+  })
 
-  // Group by region
-  const regions = ['East', 'West', 'South', 'Midwest']
+  function getWinner(seeds: number[], region: string): Team | null {
+    const rt = byRegionSeed[region] || {}
+    return seeds.map(s => rt[s]).find(t => t && !t.is_eliminated) || null
+  }
 
-  if (loading) return <div className="loading-screen"><div className="spinner" /></div>
+  function TeamSlot({ team, dimmed }: { team: Team | null; dimmed?: boolean }) {
+    if (!team) {
+      return <div className="b-slot b-slot-tbd"><span className="b-seed">?</span><span className="b-name">TBD</span></div>
+    }
+    const isSelected = selectedIds.includes(team.id)
+    const isUsed     = usedIds.has(team.id)
+    const isOut      = team.is_eliminated
+    const canClick   = !deadlinePassed && !isUsed && !isOut
 
-  if (!todayInfo) {
     return (
-      <div className="picks-page">
-        <div className="no-games-card">
-          <div style={{fontSize: '48px', marginBottom: '16px'}}>🏆</div>
-          <h2>No upcoming games</h2>
-          <p>There are no tournament days scheduled yet, or the tournament has ended.</p>
+      <button
+        className={[
+          'b-slot',
+          isSelected  ? 'b-selected'  : '',
+          isOut       ? 'b-out'        : '',
+          isUsed      ? 'b-used'       : '',
+          dimmed      ? 'b-dimmed'     : '',
+          !canClick   ? 'b-no-click'  : '',
+        ].filter(Boolean).join(' ')}
+        onClick={() => canClick && toggleTeam(team.id)}
+        disabled={!canClick}
+        style={{ height: TH }}
+      >
+        <span className="b-seed">{team.seed}</span>
+        <span className="b-name">{team.name}</span>
+        {isSelected && <span className="b-badge b-check">✓</span>}
+        {isUsed && !isSelected && <span className="b-badge b-used-tag">used</span>}
+        {isOut && !isUsed && <span className="b-badge b-out-tag">✕</span>}
+      </button>
+    )
+  }
+
+  function BracketRegion({ region }: { region: string }) {
+    const rounds = [
+      { label:'R64', groups: R64_PODS.map(([a,b]) => ({ top:[a], bottom:[b] })) },
+      { label:'R32', groups: R32_GROUPS },
+      { label:'S16', groups: S16_GROUPS },
+      { label:'E8',  groups: E8_GROUPS  },
+    ]
+
+    return (
+      <div className="bracket-region">
+        <div className="bracket-round-labels">
+          {rounds.map(r => <div key={r.label} className="bracket-round-label">{r.label}</div>)}
+        </div>
+
+        <div className="bracket-columns">
+          {rounds.map((round, ri) => {
+            const sp = SPACERS[ri]
+            return (
+              <div key={round.label} className="bracket-col">
+                {round.groups.map((grp, gi) => {
+                  const topTeam    = ri === 0
+                    ? (byRegionSeed[region]?.[grp.top[0]]    || null)
+                    : getWinner(grp.top,    region)
+                  const bottomTeam = ri === 0
+                    ? (byRegionSeed[region]?.[grp.bottom[0]] || null)
+                    : getWinner(grp.bottom, region)
+
+                  return (
+                    <React.Fragment key={gi}>
+                      {/* Top spacer before first, between-matchup gap after */}
+                      <div style={{ height: gi === 0 ? sp.top : sp.between }} />
+                      <div className={`b-matchup ${ri < 3 ? 'b-matchup-has-line' : ''}`} style={{ height: MH }}>
+                        <TeamSlot team={topTeam}    dimmed={ri > 0 && !topTeam} />
+                        <div className="b-gap" style={{ height: TG }} />
+                        <TeamSlot team={bottomTeam} dimmed={ri > 0 && !bottomTeam} />
+                      </div>
+                    </React.Fragment>
+                  )
+                })}
+              </div>
+            )
+          })}
         </div>
       </div>
     )
   }
 
-  const deadlinePassed = isDeadlinePassed(todayInfo.deadline)
+  if (loading) return <div className="loading-screen"><div className="spinner" /></div>
+
+  if (!todayInfo) return (
+    <div className="picks-page">
+      <div className="no-games-card">
+        <div style={{fontSize:'48px',marginBottom:'16px'}}>🏆</div>
+        <h2>No upcoming games</h2>
+        <p>Check back when the tournament schedule is posted.</p>
+      </div>
+    </div>
+  )
+
   const picksRequired = todayInfo.picks_required
-  const picksSelected = selectedTeamIds.length
-  const picksRemaining = picksRequired - picksSelected
-
-  // Check if current selection matches what's saved in DB
-  const selectionMatchesSaved = 
-    picksSelected === savedTeamIds.length &&
-    selectedTeamIds.every(id => savedTeamIds.includes(id))
-
-  // Only show counter/save button if selection has changed from saved state
-  const showActionBar = !deadlinePassed && !selectionMatchesSaved
 
   return (
     <div className="picks-page">
-      {/* Header */}
       <div className="picks-header">
         <div>
+          <h1 className="picks-page-title">My Picks</h1>
           <div className="picks-round">{todayInfo.round_name}</div>
-          <h1 className="picks-date">{formatDate(todayInfo.game_date)}</h1>
         </div>
         <div className="picks-deadline-box">
           <div className="deadline-label">Deadline</div>
           <div className={`deadline-value ${deadlinePassed ? 'passed' : ''}`}>
-            {deadlinePassed ? '🔒 Locked' : formatDeadline(todayInfo.deadline)}
+            {deadlinePassed ? '🔒 Locked' : new Date(todayInfo.deadline).toLocaleString('en-US', {
+              weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit', timeZoneName:'short'
+            })}
           </div>
         </div>
       </div>
 
-      {/* Not paid warning */}
       {!participant?.is_paid && (
         <div className="warning-card">
           <span>⚠️</span>
-          <div>
-            <strong>Payment not confirmed</strong>
-            <p>Your picks won't count until Adam confirms your $25 Venmo payment to <strong>@adam-furtado</strong>.</p>
+          <div><strong>Payment not confirmed</strong>
+            <p>Your picks won't count until Adam confirms your $25 Venmo to <strong>@adam-furtado</strong>.</p>
           </div>
         </div>
       )}
 
-      {/* Pick counter + save */}
-      {!deadlinePassed && savedTeamIds.length === picksRequired && !showActionBar && (
-        <div className="picks-saved-banner">
-          ✅ Picks saved! Deselect a team below to make a change.
-        </div>
-      )}
-      {showActionBar ? (
+      {/* Action bar */}
+      {!deadlinePassed && selectionChanged && (
         <div className="picks-action-bar">
-          <div className="pick-counter">
-            {picksSelected === picksRequired ? (
-              <span className="counter-ready">✅ {picksSelected}/{picksRequired} selected — ready to save</span>
-            ) : (
-              <span className="counter-pending">Select {picksRemaining} more team{picksRemaining !== 1 ? 's' : ''} ({picksSelected}/{picksRequired})</span>
-            )}
-          </div>
-          <button
-            className="btn-save"
-            onClick={handleSave}
-            disabled={saving || picksSelected !== picksRequired}
-          >
-            {saving ? 'Saving...' : 'Save Picks'}
+          <span className={`pick-counter ${selectedIds.length===picksRequired?'counter-ready':'counter-pending'}`}>
+            {selectedIds.length===picksRequired
+              ? `✅ ${selectedIds.length}/${picksRequired} selected`
+              : `${selectedIds.length}/${picksRequired} — pick ${picksRequired-selectedIds.length} more`}
+          </span>
+          <button className="btn-save" onClick={handleSave} disabled={saving||selectedIds.length!==picksRequired}>
+            {saving ? 'Saving…' : 'Save Picks'}
           </button>
         </div>
-      ) : deadlinePassed ? (
+      )}
+      {!deadlinePassed && !selectionChanged && savedIds.length===picksRequired && (
+        <div className="picks-saved-banner">✅ Picks saved! Deselect a team to make a change.</div>
+      )}
+      {deadlinePassed && (
         <div className="picks-locked-banner">
-          🔒 Picks are locked for this day.
-          {selectedTeamIds.length > 0
-            ? ` You submitted ${selectedTeamIds.length} pick${selectedTeamIds.length !== 1 ? 's' : ''}.`
-            : ' No picks were submitted — Adam will assign your pick automatically.'
-          }
-        </div>
-      ) : null}
-
-      {/* Save message */}
-      {saveMsg && (
-        <div className={`save-msg ${saveMsg.type}`}>
-          {saveMsg.text}
+          🔒 Picks locked.{' '}
+          {savedIds.length > 0 ? `You submitted ${savedIds.length} pick${savedIds.length>1?'s':''}.`
+            : 'No picks submitted — Adam will assign your pick automatically.'}
         </div>
       )}
+      {msg && <div className={`save-msg ${msg.type}`}>{msg.text}</div>}
 
-      {/* Search */}
-      <input
-        type="text"
-        className="team-search"
-        placeholder="Search teams or regions..."
-        value={searchQuery}
-        onChange={e => setSearchQuery(e.target.value)}
-      />
+      {/* Legend */}
+      <div className="bracket-legend">
+        <span className="legend-item"><span className="legend-dot dot-alive" />Available</span>
+        <span className="legend-item"><span className="legend-dot dot-selected" />Selected</span>
+        <span className="legend-item"><span className="legend-dot dot-used" />Already used</span>
+        <span className="legend-item"><span className="legend-dot dot-out" />Eliminated</span>
+      </div>
 
-      {/* Teams by region */}
-      {regions.map(region => {
-        const regionTeams = filteredTeams.filter(t => t.region === region)
-        if (regionTeams.length === 0) return null
+      {/* Region tabs */}
+      <div className="region-tabs">
+        {REGIONS.map(r => (
+          <button key={r} className={`region-tab ${activeRegion===r?'active':''}`} onClick={() => setActiveRegion(r)}>
+            {r}
+          </button>
+        ))}
+      </div>
 
-        return (
-          <div key={region} className="region-section">
-            <div className="region-title">{region}</div>
-            <div className="team-grid">
-              {regionTeams.map(team => {
-                const isSelected = selectedTeamIds.includes(team.id)
-                const isPreviouslyPicked = previouslyPickedTeamIds.has(team.id)
-                const isSavedToday = todaysSavedPickTeamIds.has(team.id)
-
-                return (
-                  <button
-                    key={team.id}
-                    className={`team-btn 
-                      ${isSelected ? 'selected' : ''} 
-                      ${isPreviouslyPicked ? 'used' : ''} 
-                      ${deadlinePassed ? 'locked' : ''}
-                    `}
-                    onClick={() => toggleTeam(team.id)}
-                    disabled={isPreviouslyPicked || deadlinePassed}
-                    title={isPreviouslyPicked ? 'You already picked this team in a previous round' : ''}
-                  >
-                    <span className="team-seed">#{team.seed}</span>
-                    <span className="team-name">{team.name}</span>
-                    {isSelected && <span className="team-check">✓</span>}
-                    {isPreviouslyPicked && <span className="team-used">used</span>}
-                    {isSavedToday && !isSelected && <span className="team-removed">removed</span>}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )
-      })}
+      {/* Bracket */}
+      <div className="bracket-wrap">
+        <BracketRegion region={activeRegion} />
+      </div>
     </div>
   )
 }
