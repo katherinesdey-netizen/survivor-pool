@@ -1,0 +1,464 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+.gp-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  background: #0a0e1a;
+  font-family: 'DM Sans', sans-serif;
+  padding: 24px 16px 60px;
+  position: relative;
+}
+
+.gp-bg {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 20%, rgba(255,107,0,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 80% 80%, rgba(0,82,204,0.15) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.gp-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px;
+  padding: 36px 28px;
+  width: 100%;
+  max-width: 480px;
+  backdrop-filter: blur(20px);
+  position: relative;
+  z-index: 1;
+  margin-top: 16px;
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+.gp-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.gp-emoji {
+  font-size: 40px;
+  margin-bottom: 10px;
+}
+
+.gp-header h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 36px;
+  line-height: 1.1;
+  color: #fff;
+  letter-spacing: 1px;
+}
+
+.gp-subtitle {
+  color: rgba(255,255,255,0.35);
+  font-size: 12px;
+  margin-top: 6px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* ── Section ─────────────────────────────────────────────── */
+.gp-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.gp-center {
+  align-items: center;
+  text-align: center;
+}
+
+.gp-intro {
+  color: rgba(255,255,255,0.55);
+  font-size: 14px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+/* ── Email form ─────────────────────────────────────────── */
+.gp-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.gp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gp-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.65);
+}
+
+.gp-input {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 16px; /* 16px prevents iOS zoom */
+  color: #fff;
+  font-family: 'DM Sans', sans-serif;
+  transition: border-color 0.2s;
+  outline: none;
+  width: 100%;
+}
+
+.gp-input:focus {
+  border-color: #ff6b00;
+  background: rgba(255,107,0,0.08);
+}
+
+.gp-input::placeholder {
+  color: rgba(255,255,255,0.2);
+}
+
+/* ── Buttons ─────────────────────────────────────────────── */
+.gp-btn-primary {
+  background: #ff6b00;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 16px;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  width: 100%;
+}
+
+.gp-btn-primary:hover:not(:disabled) { background: #e55f00; }
+.gp-btn-primary:active:not(:disabled) { transform: scale(0.98); }
+.gp-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.gp-btn-secondary {
+  display: inline-block;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.7);
+  border-radius: 10px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'DM Sans', sans-serif;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.gp-btn-secondary:hover { background: rgba(255,255,255,0.1); }
+
+.gp-btn-ghost {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.4);
+  font-size: 13px;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 4px;
+  align-self: center;
+}
+
+.gp-btn-ghost:hover { color: rgba(255,255,255,0.7); }
+
+.gp-back-link {
+  color: rgba(255,255,255,0.35);
+  font-size: 13px;
+  text-align: center;
+  text-decoration: none;
+  align-self: center;
+}
+
+.gp-back-link:hover { color: rgba(255,255,255,0.6); }
+
+/* ── Error ──────────────────────────────────────────────── */
+.gp-error {
+  color: #ff4d4d;
+  font-size: 13px;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* ── Greeting ────────────────────────────────────────────── */
+.gp-greeting {
+  font-size: 20px;
+  font-weight: 600;
+  color: #fff;
+  text-align: center;
+}
+
+/* ── Round info banner ───────────────────────────────────── */
+.gp-round-info {
+  background: rgba(255,107,0,0.1);
+  border: 1px solid rgba(255,107,0,0.25);
+  border-radius: 12px;
+  padding: 14px 18px;
+  text-align: center;
+}
+
+.gp-round-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  color: #ff6b00;
+  letter-spacing: 1px;
+}
+
+.gp-round-date {
+  color: rgba(255,255,255,0.6);
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.gp-deadline {
+  color: rgba(255,255,255,0.4);
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.gp-deadline strong {
+  color: rgba(255,255,255,0.7);
+}
+
+/* ── Pick prompt ─────────────────────────────────────────── */
+.gp-pick-prompt {
+  color: rgba(255,255,255,0.45);
+  font-size: 13px;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* ── Region groups ───────────────────────────────────────── */
+.gp-region {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gp-region-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(255,255,255,0.3);
+  padding: 0 2px;
+}
+
+.gp-team-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── Team buttons ────────────────────────────────────────── */
+.gp-team-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1.5px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+  width: 100%;
+  text-align: left;
+  font-family: 'DM Sans', sans-serif;
+  position: relative;
+}
+
+.gp-team-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.18);
+}
+
+.gp-team-btn.gp-selected {
+  background: rgba(255,107,0,0.15);
+  border-color: #ff6b00;
+}
+
+.gp-team-btn.gp-used {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.gp-btn-seed {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.35);
+  min-width: 26px;
+  flex-shrink: 0;
+}
+
+.gp-selected .gp-btn-seed {
+  color: #ff6b00;
+}
+
+.gp-btn-name {
+  font-size: 15px;
+  font-weight: 500;
+  color: #fff;
+  flex: 1;
+}
+
+.gp-used-tag {
+  font-size: 10px;
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.3);
+  padding: 2px 7px;
+  border-radius: 20px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+/* ── Confirm sticky bar ──────────────────────────────────── */
+.gp-confirm-bar {
+  position: sticky;
+  bottom: 16px;
+  background: rgba(18,18,18,0.95);
+  border: 1px solid rgba(255,107,0,0.35);
+  border-radius: 16px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  z-index: 10;
+}
+
+.gp-confirm-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gp-confirm-seed {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ff6b00;
+}
+
+.gp-confirm-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  flex: 1;
+}
+
+.gp-confirm-region {
+  font-size: 12px;
+  color: rgba(255,255,255,0.35);
+}
+
+/* ── Already picked card ─────────────────────────────────── */
+.gp-already-card {
+  background: rgba(74,222,128,0.08);
+  border: 1px solid rgba(74,222,128,0.25);
+  border-radius: 14px;
+  padding: 18px 20px;
+  text-align: center;
+}
+
+.gp-already-label {
+  font-size: 12px;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 10px;
+}
+
+.gp-already-team {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.gp-seed {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.35);
+}
+
+.gp-team-name {
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.gp-already-region {
+  font-size: 12px;
+  color: rgba(255,255,255,0.3);
+  margin-top: 6px;
+}
+
+/* ── Done screen ─────────────────────────────────────────── */
+.gp-big-emoji {
+  font-size: 56px;
+  margin-bottom: 8px;
+}
+
+.gp-center h2 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 32px;
+  color: #fff;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+.gp-center p {
+  color: rgba(255,255,255,0.5);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.gp-done-card {
+  background: rgba(255,107,0,0.1);
+  border: 1px solid rgba(255,107,0,0.3);
+  border-radius: 14px;
+  padding: 18px 24px;
+  text-align: center;
+  width: 100%;
+}
+
+.gp-done-round {
+  font-size: 12px;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 8px;
+}
+
+.gp-done-team {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.gp-done-team .gp-seed { font-size: 15px; }
+.gp-done-team .gp-team-name { font-size: 26px; }
+
+.gp-done-note {
+  color: rgba(255,255,255,0.45);
+  font-size: 15px;
+}
+
+/* ── No-games screen ─────────────────────────────────────── */
+.gp-center strong {
+  color: #fff;
+}
