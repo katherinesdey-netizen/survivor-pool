@@ -46,18 +46,12 @@ export default function LoginPage() {
 
     setLoading(true)
 
-    // Check if email already registered
+    // Check if a participant row already exists for this email (pre-loaded or existing)
     const { data: existing } = await supabase
       .from('participants')
       .select('id')
       .ilike('email', email.trim())
       .maybeSingle()
-
-    if (existing) {
-      setError('An account with this email already exists. Try logging in.')
-      setLoading(false)
-      return
-    }
 
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
@@ -66,29 +60,52 @@ export default function LoginPage() {
     })
 
     if (error) {
-      setError(error.message)
+      if (error.message.toLowerCase().includes('already registered')) {
+        setError('An account with this email already exists. Try logging in.')
+      } else {
+        setError(error.message)
+      }
       setLoading(false)
       return
     }
 
     if (data.user) {
-      // Create participant profile immediately
-      const { error: insertError } = await supabase.from('participants').insert({
-        id: data.user.id,
-        email: email.toLowerCase().trim(),
-        full_name: fullName.trim(),
-        venmo_handle: venmo.trim() || null,
-        is_paid: false,
-        is_admin: false,
-        is_eliminated: false,
-      })
+      if (existing) {
+        // Pre-loaded participant: update their row to use the new auth user's ID
+        // so AuthContext can find them by user.id
+        const { error: updateError } = await supabase
+          .from('participants')
+          .update({
+            id: data.user.id,
+            full_name: fullName.trim() || undefined,
+            venmo_handle: venmo.trim() || undefined,
+          })
+          .eq('id', existing.id)
 
-      if (insertError) {
-        // Auth user was created but profile insert failed — sign them out and surface the error
-        await supabase.auth.signOut()
-        setError('Account created but profile setup failed. Please contact the pool admin.')
-        setLoading(false)
-        return
+        if (updateError) {
+          await supabase.auth.signOut()
+          setError('Account linked but profile update failed. Please contact the pool admin.')
+          setLoading(false)
+          return
+        }
+      } else {
+        // Brand new participant — create a fresh profile row
+        const { error: insertError } = await supabase.from('participants').insert({
+          id: data.user.id,
+          email: email.toLowerCase().trim(),
+          full_name: fullName.trim(),
+          venmo_handle: venmo.trim() || null,
+          is_paid: false,
+          is_admin: false,
+          is_eliminated: false,
+        })
+
+        if (insertError) {
+          await supabase.auth.signOut()
+          setError('Account created but profile setup failed. Please contact the pool admin.')
+          setLoading(false)
+          return
+        }
       }
 
       // Sign them in right away
@@ -145,8 +162,15 @@ export default function LoginPage() {
               <button type="button" className="link-btn" onClick={() => { setStep('register'); setError('') }}>
                 New? Register here
               </button>
+              <span className="footer-divider">·</span>
               <button type="button" className="link-btn" onClick={() => { setStep('forgot'); setError('') }}>
                 Forgot password?
+              </button>
+            </div>
+            <div className="no-login-link">
+              <span className="no-login-label">Don't want to log in?</span>
+              <button type="button" className="link-btn no-login-btn" onClick={() => window.location.href = '/pick'}>
+                Make your picks here →
               </button>
             </div>
           </form>
