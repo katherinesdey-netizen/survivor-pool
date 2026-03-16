@@ -1,7 +1,7 @@
-// Vercel Serverless Function — look up a guest participant by email
+// Vercel Serverless Function — look up guest participant + all data needed for pick page
 // POST /api/lookup-participant
 // Body: { email: string }
-// Returns: { id, full_name, is_paid, is_eliminated } or error
+// Returns: { participant, today, last_day, teams, games, picks } or error
 
 const { createClient } = require('@supabase/supabase-js')
 
@@ -22,13 +22,14 @@ module.exports = async (req, res) => {
   if (!email) return res.status(400).json({ error: 'Missing email' })
 
   try {
-    const { data: participant, error } = await supabase
+    // ── 1. Look up participant ─────────────────────────────
+    const { data: participant, error: pErr } = await supabase
       .from('participants')
       .select('id, full_name, is_paid, is_eliminated')
       .ilike('email', email.trim())
       .maybeSingle()
 
-    if (error) throw error
+    if (pErr) throw pErr
 
     if (!participant) {
       return res.status(404).json({
@@ -49,7 +50,46 @@ module.exports = async (req, res) => {
       })
     }
 
-    return res.status(200).json({ participant })
+    // ── 2. Find today's open tournament day ───────────────
+    const todayStr = new Date().toISOString().split('T')[0]
+    const { data: daysData } = await supabase
+      .from('tournament_days')
+      .select('game_date, round_name, deadline, picks_required')
+      .gte('game_date', todayStr)
+      .order('game_date', { ascending: true })
+
+    const now = new Date()
+    const today = (daysData || []).find(d => !d.deadline || now < new Date(d.deadline)) ?? null
+
+    // ── 3. Fetch remaining data in parallel ───────────────
+    const [teamsResult, gamesResult, picksResult] = await Promise.all([
+      supabase.from('teams').select('id, name, seed, region').eq('is_eliminated', false).order('seed'),
+      today
+        ? supabase.from('games').select('team1_id, team2_id').eq('game_date', today.game_date)
+        : Promise.resolve({ data: [] }),
+      supabase
+        .from('picks')
+        .select('team_id, game_date, teams(name, seed, region)')
+        .eq('participant_id', participant.id),
+    ])
+
+    // Flatten picks so they JSON-serialize cleanly
+    const picks = (picksResult.data || []).map((pk) => ({
+      team_id: pk.team_id,
+      game_date: pk.game_date,
+      team_name: pk.teams?.name ?? null,
+      team_seed: pk.teams?.seed ?? null,
+      team_region: pk.teams?.region ?? null,
+    }))
+
+    return res.status(200).json({
+      participant,
+      today,                              // null if no open day
+      last_day: today === null ? (daysData?.[0] ?? null) : null,
+      teams: teamsResult.data || [],
+      games: gamesResult.data || [],
+      picks,
+    })
 
   } catch (err) {
     console.error('lookup-participant error:', err)

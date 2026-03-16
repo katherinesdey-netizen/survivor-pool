@@ -239,88 +239,141 @@
   line-height: 1.5;
 }
 
-/* ── Region groups ───────────────────────────────────────── */
-.gp-region {
+/* ── Wide card for picking step ─────────────────────────── */
+.gp-card-wide {
+  max-width: 700px !important;
+}
+
+/* ── Legend ──────────────────────────────────────────────── */
+.gp-legend {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 2px 0;
 }
 
-.gp-region-label {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: rgba(255,255,255,0.3);
-  padding: 0 2px;
-}
-
-.gp-team-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-/* ── Team buttons ────────────────────────────────────────── */
-.gp-team-btn {
+.gp-legend-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: rgba(255,255,255,0.04);
-  border: 1.5px solid rgba(255,255,255,0.08);
-  border-radius: 10px;
-  padding: 12px 14px;
-  cursor: pointer;
-  transition: all 0.15s;
-  width: 100%;
-  text-align: left;
-  font-family: 'DM Sans', sans-serif;
-  position: relative;
-}
-
-.gp-team-btn:hover:not(:disabled) {
-  background: rgba(255,255,255,0.07);
-  border-color: rgba(255,255,255,0.18);
-}
-
-.gp-team-btn.gp-selected {
-  background: rgba(255,107,0,0.15);
-  border-color: #ff6b00;
-}
-
-.gp-team-btn.gp-used {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.gp-btn-seed {
+  gap: 5px;
   font-size: 11px;
-  font-weight: 700;
-  color: rgba(255,255,255,0.35);
-  min-width: 26px;
+  color: rgba(255,255,255,0.45);
+}
+
+.gp-legend-bright { color: rgba(255,255,255,0.9); }
+
+.gp-legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  display: inline-block;
   flex-shrink: 0;
 }
 
-.gp-selected .gp-btn-seed {
-  color: #ff6b00;
+.gp-dot-alive    { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); }
+.gp-dot-selected { background: rgba(255,107,0,0.4);   border: 1px solid #ff6b00; }
+.gp-dot-used     { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
+.gp-dot-not-today { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.1); }
+
+/* ── Regions grid ────────────────────────────────────────── */
+.gp-regions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
 }
 
-.gp-btn-name {
-  font-size: 15px;
-  font-weight: 500;
-  color: #fff;
-  flex: 1;
+.gp-region-section {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 
-.gp-used-tag {
+.gp-region-label {
   font-size: 10px;
-  background: rgba(255,255,255,0.1);
-  color: rgba(255,255,255,0.3);
-  padding: 2px 7px;
-  border-radius: 20px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.3);
+  padding: 0 4px;
+  margin-bottom: 3px;
+}
+
+/* ── Matchup pods ────────────────────────────────────────── */
+.gp-matchup {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 4px;
+}
+
+.gp-match-gap {
+  height: 2px;
+  background: rgba(255,255,255,0.06);
+}
+
+.gp-match-slot {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  width: 100%;
+  border: none;
+  border-radius: 0;
+  background: rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  color: #fff;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  padding: 0 6px;
+  transition: background 0.1s;
+  text-align: left;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.gp-match-slot:first-child   { border-radius: 5px 5px 0 0; }
+.gp-slot-last                { border-radius: 0 0 5px 5px; border-bottom: none; }
+.gp-match-slot:hover:not(:disabled):not(.gp-slot-not-today):not(.gp-slot-used) {
+  background: rgba(255,255,255,0.1);
+}
+
+.gp-slot-selected  { background: rgba(255,107,0,0.25) !important; }
+.gp-slot-used      { opacity: 0.4; cursor: default; }
+.gp-slot-not-today { opacity: 0.18; cursor: default; background: rgba(255,255,255,0.02); }
+.gp-slot-tbd       { opacity: 0.25; cursor: default; }
+
+.gp-match-seed {
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.4);
+  min-width: 14px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.gp-slot-selected .gp-match-seed { color: rgba(255,107,0,0.8); }
+
+.gp-match-name {
+  font-size: 11px;
+  font-weight: 500;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gp-match-check {
+  font-size: 9px;
+  color: #ff6b00;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.gp-match-used-tag {
+  font-size: 8px;
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.3);
+  border-radius: 3px;
+  padding: 1px 3px;
   flex-shrink: 0;
 }
 

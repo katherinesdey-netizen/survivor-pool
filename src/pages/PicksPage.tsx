@@ -322,7 +322,7 @@ export default function PicksPage() {
 
       {/* Legend */}
       <div className="bracket-legend">
-        <span className="legend-item"><span className="legend-dot dot-alive" />Playing today</span>
+        <span className="legend-item legend-item-bright"><span className="legend-dot dot-alive" />Playing today</span>
         <span className="legend-item"><span className="legend-dot dot-selected" />Your pick</span>
         <span className="legend-item"><span className="legend-dot dot-used" />Already used</span>
         <span className="legend-item"><span className="legend-dot dot-out" />Eliminated</span>
