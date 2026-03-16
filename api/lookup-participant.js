@@ -37,10 +37,11 @@ module.exports = async (req, res) => {
         return res.status(200).json({ needs_name: true })
       }
 
-      // Create the new participant
+      // Create the new participant (id has no default — generate a UUID)
+      const { randomUUID } = require('crypto')
       const { data: created, error: createErr } = await supabase
         .from('participants')
-        .insert({ full_name: name.trim(), email: email.trim().toLowerCase(), is_paid: true, is_eliminated: false })
+        .insert({ id: randomUUID(), full_name: name.trim(), email: email.trim().toLowerCase(), is_paid: true, is_eliminated: false })
         .select('id, full_name, is_paid, is_eliminated')
         .single()
 
