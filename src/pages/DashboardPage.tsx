@@ -84,8 +84,8 @@ export default function DashboardPage() {
 
   // Pool-wide data
   const [allParticipants, setAllParticipants] = useState<AllParticipant[]>([])
-  const [allPicks, setAllPicks] = useState<AllPick[]>([])
-  const [dayMetas, setDayMetas] = useState<DayMeta[]>([])
+  const [allPicks, setAllPicks] = useState<AllPick[]>([]) // eslint-disable-line @typescript-eslint/no-unused-vars
+  const [dayMetas, setDayMetas] = useState<DayMeta[]>([]) // eslint-disable-line @typescript-eslint/no-unused-vars
   const [totalPot, setTotalPot] = useState(0)
 
   // Full standings data (all days, all participants)
@@ -397,7 +397,7 @@ export default function DashboardPage() {
                   const away = comp.competitors.find(c => c.homeAway === 'away')
                   const isLive = status.type.name === 'STATUS_IN_PROGRESS'
                   const isFinal = status.type.completed
-                  const isScheduled = !isLive && !isFinal
+                  const isScheduled = !isLive && !isFinal // eslint-disable-line @typescript-eslint/no-unused-vars
 
                   const network = comp.broadcasts?.[0]?.media?.shortName || null
                   const period = status.period
