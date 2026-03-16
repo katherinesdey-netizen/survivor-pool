@@ -58,28 +58,21 @@ export default function GuestPickPage() {
     try {
       const trimmed = email.trim().toLowerCase()
 
-      const { data: p } = await supabase
-        .from('participants')
-        .select('id, full_name, is_paid, is_eliminated')
-        .ilike('email', trimmed)
-        .maybeSingle()
+      // Use serverless endpoint — anon key can't read participants directly (RLS)
+      const lookupRes = await fetch('/api/lookup-participant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trimmed }),
+      })
+      const lookupJson = await lookupRes.json()
 
-      if (!p) {
-        setEmailError("We don't have that email on file. Check for typos or contact the pool admin.")
-        setEmailLoading(false)
-        return
-      }
-      if (!p.is_paid) {
-        setEmailError("Your entry fee hasn't been confirmed yet. Contact the pool admin.")
-        setEmailLoading(false)
-        return
-      }
-      if (p.is_eliminated) {
-        setEmailError("You've been eliminated from the pool. Better luck next year! 😢")
+      if (!lookupRes.ok) {
+        setEmailError(lookupJson.message || "Something went wrong. Please try again.")
         setEmailLoading(false)
         return
       }
 
+      const p: Participant = lookupJson.participant
       setParticipant(p)
 
       // Find the next open tournament day (today or future, deadline not yet passed)
