@@ -19,6 +19,8 @@ export default function StandingsPage() {
 
   async function fetchData() {
     setLoading(true)
+    // Safety net — never spin forever
+    const giveUp = setTimeout(() => setLoading(false), 8000)
     try {
       const [{ data: participantsData }, { data: picksData }, { data: daysData }] =
         await Promise.all([
@@ -43,6 +45,7 @@ export default function StandingsPage() {
     } catch (err) {
       console.error('fetchData error:', err)
     } finally {
+      clearTimeout(giveUp)
       setLoading(false)
     }
   }

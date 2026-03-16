@@ -27,7 +27,7 @@ export default function Layout() {
           {/* Desktop nav */}
           <nav className="header-nav desktop-nav">
             <NavLink to="/dashboard" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Headquarters</NavLink>
-            <NavLink to="/picks" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Picks</NavLink>
+            <NavLink to="/picks" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>My Picks</NavLink>
             <NavLink to="/standings" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Standings</NavLink>
             <NavLink to="/recaps" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Recaps</NavLink>
             <NavLink to="/rules" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Rules</NavLink>
@@ -54,7 +54,7 @@ export default function Layout() {
         {menuOpen && (
           <nav className="mobile-nav">
             <NavLink to="/dashboard" className={({isActive}) => isActive ? 'mobile-nav-link active' : 'mobile-nav-link'} onClick={closeMenu}>Headquarters</NavLink>
-            <NavLink to="/picks" className={({isActive}) => isActive ? 'mobile-nav-link active' : 'mobile-nav-link'} onClick={closeMenu}>Picks</NavLink>
+            <NavLink to="/picks" className={({isActive}) => isActive ? 'mobile-nav-link active' : 'mobile-nav-link'} onClick={closeMenu}>My Picks</NavLink>
             <NavLink to="/standings" className={({isActive}) => isActive ? 'mobile-nav-link active' : 'mobile-nav-link'} onClick={closeMenu}>Standings</NavLink>
             <NavLink to="/recaps" className={({isActive}) => isActive ? 'mobile-nav-link active' : 'mobile-nav-link'} onClick={closeMenu}>Recaps</NavLink>
             <NavLink to="/rules" className={({isActive}) => isActive ? 'mobile-nav-link active' : 'mobile-nav-link'} onClick={closeMenu}>Rules</NavLink>

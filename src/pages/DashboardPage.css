@@ -8,6 +8,7 @@
   align-items: start;
 }
 .hq-left, .hq-right {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -19,6 +20,7 @@
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 16px;
   padding: 20px 24px;
+  min-width: 0;
 }
 .lego-label {
   font-size: 11px;

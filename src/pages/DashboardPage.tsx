@@ -73,7 +73,7 @@ interface EspnGame {
 }
 
 export default function DashboardPage() {
-  const { participant } = useAuth()
+  const { participant, loading: authLoading } = useAuth()
 
   // My data
   const [myPicks, setMyPicks] = useState<MyPick[]>([])
@@ -98,10 +98,14 @@ export default function DashboardPage() {
   const [scoresLoading, setScoresLoading] = useState(true)
 
   useEffect(() => {
-    if (!participant) return
+    if (authLoading) return          // wait for auth to resolve
+    if (!participant) {
+      setLoading(false)              // auth done but no participant — stop spinning
+      return
+    }
     fetchData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [participant])
+  }, [participant, authLoading])
 
   // ESPN — 30s when live games, 60s otherwise
   useEffect(() => {
