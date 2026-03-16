@@ -112,7 +112,7 @@ module.exports = async (req, res) => {
       .neq('game_date', game_date)
 
     if (priorUses && priorUses.length > 0) {
-      const usedName = (priorUses[0] as any).teams?.name || 'A team you selected'
+      const usedName = priorUses[0].teams?.name || 'A team you selected'
       return res.status(400).json({
         error: 'team_already_used',
         message: `${usedName} was already used on a previous day. Each team can only be picked once.`
