@@ -30,17 +30,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [participant, setParticipant] = useState<Participant | null>(null)
   const [loading, setLoading] = useState(true)
 
-  async function fetchParticipant(userId: string) {
+  async function fetchParticipant(userId: string, userEmail?: string) {
+    // 1. Normal lookup by auth UUID
     const { data } = await supabase
       .from('participants')
       .select('*')
       .eq('id', userId)
       .single()
-    setParticipant(data)
+
+    if (data) { setParticipant(data); return }
+
+    // 2. Fallback: find a pre-loaded row by email and link it to this auth user
+    if (!userEmail) { setParticipant(null); return }
+
+    const { data: byEmail } = await supabase
+      .from('participants')
+      .select('*')
+      .eq('email', userEmail)
+      .single()
+
+    if (!byEmail) { setParticipant(null); return }
+
+    // Update placeholder UUID → real auth UUID (allowed by "Link pre-loaded participant" RLS policy)
+    await supabase.from('participants').update({ id: userId }).eq('email', userEmail)
+    setParticipant({ ...byEmail, id: userId })
   }
 
   async function refreshParticipant() {
-    if (user) await fetchParticipant(user.id)
+    if (user) await fetchParticipant(user.id, user.email ?? undefined)
   }
 
   async function signOut() {
@@ -59,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(session)
         setUser(session?.user ?? null)
         if (session?.user) {
-          fetchParticipant(session.user.id).finally(() => {
+          fetchParticipant(session.user.id, session.user.email ?? undefined).finally(() => {
             clearTimeout(timeout)
             setLoading(false)
           })
@@ -78,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(session)
         setUser(session?.user ?? null)
         if (session?.user) {
-          await fetchParticipant(session.user.id)
+          await fetchParticipant(session.user.id, session.user.email ?? undefined)
         } else {
           setParticipant(null)
         }
