@@ -1,7 +1,7 @@
 // Vercel Serverless Function — look up guest participant + all data needed for pick page
 // POST /api/lookup-participant
-// Body: { email: string }
-// Returns: { participant, today, last_day, teams, games, picks } or error
+// Body: { email: string, name?: string }
+// Returns: { participant, today, last_day, teams, games, picks } or { needs_name: true } or error
 
 const { createClient } = require('@supabase/supabase-js')
 
@@ -18,12 +18,12 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  const { email } = req.body || {}
+  const { email, name } = req.body || {}
   if (!email) return res.status(400).json({ error: 'Missing email' })
 
   try {
     // ── 1. Look up participant ─────────────────────────────
-    const { data: participant, error: pErr } = await supabase
+    let { data: participant, error: pErr } = await supabase
       .from('participants')
       .select('id, full_name, is_paid, is_eliminated')
       .ilike('email', email.trim())
@@ -32,11 +32,22 @@ module.exports = async (req, res) => {
     if (pErr) throw pErr
 
     if (!participant) {
-      return res.status(404).json({
-        error: 'not_found',
-        message: "We don't have that email on file. Check for typos or contact the pool admin."
-      })
+      // New email — if no name provided yet, ask the frontend for one
+      if (!name || !name.trim()) {
+        return res.status(200).json({ needs_name: true })
+      }
+
+      // Create the new participant
+      const { data: created, error: createErr } = await supabase
+        .from('participants')
+        .insert({ full_name: name.trim(), email: email.trim().toLowerCase(), is_paid: true, is_eliminated: false })
+        .select('id, full_name, is_paid, is_eliminated')
+        .single()
+
+      if (createErr) throw createErr
+      participant = created
     }
+
     if (!participant.is_paid) {
       return res.status(403).json({
         error: 'not_paid',

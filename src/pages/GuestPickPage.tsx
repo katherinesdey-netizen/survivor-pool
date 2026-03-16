@@ -35,7 +35,7 @@ interface SubmittedPick {
   team_region: string | null
 }
 
-type Step = 'email' | 'picking' | 'done' | 'already_picked' | 'no_games'
+type Step = 'email' | 'new_user' | 'picking' | 'done' | 'already_picked' | 'no_games'
 
 const R64_PODS: [number, number][] = [[1,16],[8,9],[5,12],[4,13],[6,11],[3,14],[7,10],[2,15]]
 const REGIONS = ['East', 'West', 'South', 'Midwest']
@@ -45,6 +45,9 @@ export default function GuestPickPage() {
   const [email, setEmail] = useState('')
   const [emailLoading, setEmailLoading] = useState(false)
   const [emailError, setEmailError] = useState('')
+  const [name, setName] = useState('')
+  const [nameLoading, setNameLoading] = useState(false)
+  const [nameError, setNameError] = useState('')
 
   const [participant, setParticipant] = useState<Participant | null>(null)
   const [today, setToday] = useState<TournamentDay | null>(null)
@@ -76,6 +79,13 @@ export default function GuestPickPage() {
 
       if (!res.ok) {
         setEmailError(json.message || 'Something went wrong. Please try again.')
+        setEmailLoading(false)
+        return
+      }
+
+      // New email — need a name to create the participant
+      if (json.needs_name) {
+        setStep('new_user')
         setEmailLoading(false)
         return
       }
@@ -116,6 +126,51 @@ export default function GuestPickPage() {
     }
 
     setEmailLoading(false)
+  }
+
+  async function handleNameSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setNameError('')
+    setNameLoading(true)
+
+    try {
+      const trimmed = email.trim().toLowerCase()
+      const res = await fetch('/api/lookup-participant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trimmed, name: name.trim() }),
+      })
+      const json = await res.json()
+
+      if (!res.ok) {
+        setNameError(json.message || 'Something went wrong. Please try again.')
+        setNameLoading(false)
+        return
+      }
+
+      const { participant: p, today: day, last_day, teams: teamsData, games: gamesData, picks: allPicks } = json
+
+      setParticipant(p)
+      setTeams(teamsData || [])
+      setGames(gamesData || [])
+
+      if (!day) {
+        setToday(last_day ?? null)
+        setStep('no_games')
+        setNameLoading(false)
+        return
+      }
+
+      setToday(day)
+      setUsedTeamIds(new Set())
+      setExistingPicks([])
+      setStep('picking')
+
+    } catch (err) {
+      setNameError('Something went wrong. Please try again.')
+    }
+
+    setNameLoading(false)
   }
 
   function toggleTeam(team: Team) {
@@ -262,6 +317,35 @@ export default function GuestPickPage() {
                 {emailLoading ? 'Looking up…' : 'Continue →'}
               </button>
               <a href="/login" className="gp-back-link">← Back to sign in</a>
+            </form>
+          </div>
+        )}
+
+        {/* ── New user — collect name ── */}
+        {step === 'new_user' && (
+          <div className="gp-section">
+            <div className="gp-new-user-badge">🎉 New to the pool!</div>
+            <p className="gp-intro">We didn't find <strong>{email}</strong> — enter your name and we'll add you automatically.</p>
+            <form onSubmit={handleNameSubmit} className="gp-form">
+              <div className="gp-field">
+                <label>Your full name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder="First Last"
+                  required
+                  autoFocus
+                  className="gp-input"
+                />
+              </div>
+              {nameError && <p className="gp-error">{nameError}</p>}
+              <button type="submit" className="gp-btn-primary" disabled={nameLoading || !name.trim()}>
+                {nameLoading ? 'Joining…' : 'Join & Pick →'}
+              </button>
+              <button type="button" className="gp-back-link" onClick={() => { setStep('email'); setNameError('') }}>
+                ← Use a different email
+              </button>
             </form>
           </div>
         )}
