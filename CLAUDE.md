@@ -11,6 +11,10 @@ npm start   # http://localhost:3000
 ```
 Note: `/api/*.js` serverless functions do NOT run locally — test those on Vercel after `git push`.
 
+## Production URL
+- **Custom domain:** https://adamssurvivorpool.com (primary)
+- **Vercel URL:** https://survivor-pool-26.vercel.app (backup)
+
 ---
 
 ## What This Is
