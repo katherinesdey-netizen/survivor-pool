@@ -19,6 +19,7 @@ export default function RecapsPage() {
 
   async function fetchRecaps() {
     setLoading(true)
+    const giveUp = setTimeout(() => setLoading(false), 8000)
     try {
       const { data } = await supabase
         .from('recaps')
@@ -30,6 +31,7 @@ export default function RecapsPage() {
     } catch (err) {
       console.error('fetchRecaps error:', err)
     } finally {
+      clearTimeout(giveUp)
       setLoading(false)
     }
   }

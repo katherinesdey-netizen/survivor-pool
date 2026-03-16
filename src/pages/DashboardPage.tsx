@@ -116,6 +116,7 @@ export default function DashboardPage() {
 
   async function fetchData() {
     setLoading(true)
+    const giveUp = setTimeout(() => setLoading(false), 8000)
     try {
       const today = new Date().toISOString().split('T')[0]
 
@@ -194,6 +195,7 @@ export default function DashboardPage() {
     } catch (err) {
       console.error('fetchData error:', err)
     } finally {
+      clearTimeout(giveUp)
       setLoading(false)
     }
   }

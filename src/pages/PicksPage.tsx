@@ -59,7 +59,7 @@ const SPACERS = [
 ]
 
 export default function PicksPage() {
-  const { participant } = useAuth()
+  const { participant, loading: authLoading } = useAuth()
   const [teams, setTeams]               = useState<Team[]>([])
   const [todayInfo, setTodayInfo]       = useState<TournamentDay | null>(null)
   const [existingPicks, setExistingPicks] = useState<ExistingPick[]>([])
@@ -71,13 +71,15 @@ export default function PicksPage() {
   const [activeRegion, setActiveRegion] = useState(REGIONS[0])
 
   useEffect(() => {
-    if (!participant) return
+    if (authLoading) return
+    if (!participant) { setLoading(false); return }
     fetchData()
     // eslint-disable-next-line
-  }, [participant])
+  }, [participant, authLoading])
 
   async function fetchData() {
     setLoading(true)
+    const giveUp = setTimeout(() => setLoading(false), 8000)
     try {
       const today = new Date().toISOString().split('T')[0]
       const { data: dayData } = await supabase
@@ -100,7 +102,7 @@ export default function PicksPage() {
       setSelectedIds(todayPicks.map(p => p.team_id))
       setSavedIds(todayPicks.map(p => p.team_id))
     } catch(e) { console.error(e) }
-    finally { setLoading(false) }
+    finally { clearTimeout(giveUp); setLoading(false) }
   }
 
   const deadlinePassed = todayInfo ? new Date() > new Date(todayInfo.deadline) : false
