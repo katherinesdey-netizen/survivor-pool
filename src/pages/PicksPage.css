@@ -52,6 +52,42 @@
 .dot-used     { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
 .dot-out      { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2); }
 
+/* ── Day selector ── */
+.day-selector {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+
+.day-pill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 9px 18px; border-radius: 22px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.6);
+  font-size: 13px; font-weight: 600; font-family: inherit;
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.day-pill:hover:not(:disabled):not(.day-pill-active) {
+  border-color: rgba(255,255,255,0.3); color: #fff;
+  background: rgba(255,255,255,0.07);
+}
+.day-pill-active {
+  background: rgba(255,107,0,0.18) !important;
+  border-color: rgba(255,107,0,0.6) !important;
+  color: #ff6b00 !important;
+}
+.day-pill-locked {
+  opacity: 0.4; cursor: not-allowed;
+}
+.day-pill-past:not(.day-pill-active) {
+  opacity: 0.55;
+}
+.day-pill-name { pointer-events: none; }
+.day-pill-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #4ade80; flex-shrink: 0;
+}
+.day-pill-lock { font-size: 11px; flex-shrink: 0; }
+
 /* Region tabs */
 .region-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
 .region-tab {
