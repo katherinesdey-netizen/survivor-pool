@@ -51,11 +51,10 @@
 .dot-selected { background: rgba(255,107,0,0.4); border: 1px solid #ff6b00; }
 .dot-used     { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
 .dot-out      { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2); }
+.dot-not-today { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); }
 
 /* ── Day selector ── */
-.day-selector {
-  display: flex; gap: 8px; flex-wrap: wrap;
-}
+.day-selector { display: flex; gap: 8px; flex-wrap: wrap; }
 
 .day-pill {
   display: flex; align-items: center; gap: 6px;
@@ -75,134 +74,63 @@
   border-color: rgba(255,107,0,0.6) !important;
   color: #ff6b00 !important;
 }
-.day-pill-locked {
-  opacity: 0.4; cursor: not-allowed;
-}
-.day-pill-past:not(.day-pill-active) {
-  opacity: 0.55;
-}
+.day-pill-locked { opacity: 0.4; cursor: not-allowed; }
+.day-pill-past:not(.day-pill-active) { opacity: 0.55; }
 .day-pill-name { pointer-events: none; }
-.day-pill-dot {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: #4ade80; flex-shrink: 0;
-}
+.day-pill-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; flex-shrink: 0; }
 .day-pill-lock { font-size: 11px; flex-shrink: 0; }
 
-/* Region tabs */
-.region-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
-.region-tab {
-  padding: 8px 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.12);
-  background: transparent; color: rgba(255,255,255,0.5); font-size: 13px;
-  font-weight: 600; font-family: inherit; cursor: pointer; transition: all 0.15s;
-}
-.region-tab:hover { border-color: rgba(255,255,255,0.3); color: #fff; }
-.region-tab.active { background: rgba(255,107,0,0.15); border-color: rgba(255,107,0,0.5); color: #ff6b00; }
-
-/* ── Bracket ── */
-.bracket-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 8px; }
-
-.bracket-region { min-width: 700px; }
-
-.bracket-round-labels { display: flex; gap: 0; margin-bottom: 8px; }
-.bracket-round-label {
-  flex: 1; text-align: center; font-size: 11px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.3);
+/* ── Regions grid ── */
+.regions-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
 }
 
-.bracket-columns { display: flex; align-items: flex-start; }
-.bracket-col { flex: 1; display: flex; flex-direction: column; }
-
-/* Matchup container */
-.b-matchup {
-  display: flex; flex-direction: column;
-  position: relative;
+.region-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-/* Connecting line to the right (feeds next round) */
-.b-matchup-has-line::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: calc(50% - 1px);
-  width: 8px;
-  height: 1px;
-  background: rgba(255,255,255,0.15);
+.region-section-header {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.1em; color: rgba(255,255,255,0.35);
+  padding: 0 6px; margin-bottom: 4px;
 }
 
-/* Vertical connector between two matchups feeding same R32 slot */
-/* Applied via JS — see b-matchup-top and b-matchup-bottom classes */
-.b-matchup-top::before {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 50%;
-  width: 1px;
-  background: rgba(255,255,255,0.15);
-}
+/* ── Matchup + team slots ── */
+.b-matchup { display: flex; flex-direction: column; margin-bottom: 6px; }
 
 .b-gap { width: 100%; background: rgba(255,255,255,0.06); }
 
-/* Team slot button */
 .b-slot {
   display: flex; align-items: center; gap: 6px;
   width: 100%; border: none; border-radius: 0;
   background: rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.06);
   color: #fff; font-family: inherit; cursor: pointer;
   padding: 0 8px; transition: background 0.1s;
-  text-align: left; overflow: hidden;
-  flex-shrink: 0;
+  text-align: left; overflow: hidden; flex-shrink: 0;
 }
-.b-slot:first-child { border-radius: 6px 6px 0 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.b-slot:first-child { border-radius: 6px 6px 0 0; }
 .b-slot:last-child  { border-radius: 0 0 6px 6px; border-bottom: none; }
-
 .b-slot:hover:not(.b-no-click) { background: rgba(255,255,255,0.1); }
 
 .b-slot.b-selected  { background: rgba(255,107,0,0.25) !important; border-color: rgba(255,107,0,0.4); }
 .b-slot.b-out       { background: rgba(255,255,255,0.02); opacity: 0.45; cursor: default; }
 .b-slot.b-used      { background: rgba(255,255,255,0.03); opacity: 0.5; cursor: default; }
 .b-slot.b-no-click  { cursor: default; }
-.b-slot.b-dimmed    { opacity: 0.3; cursor: default; }
+.b-slot.b-not-today { opacity: 0.18; cursor: default; background: rgba(255,255,255,0.02); }
 .b-slot-tbd         { opacity: 0.25; cursor: default !important; }
 
-.b-seed {
-  font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.4);
-  min-width: 16px; text-align: right; flex-shrink: 0;
-}
+.b-seed { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.4); min-width: 16px; text-align: right; flex-shrink: 0; }
 .b-selected .b-seed { color: rgba(255,107,0,0.8); }
-
 .b-name { font-size: 12px; font-weight: 500; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .b-badge { font-size: 10px; flex-shrink: 0; }
 .b-check    { color: #ff6b00; font-weight: 700; }
 .b-used-tag { color: rgba(255,255,255,0.3); font-size: 9px; background: rgba(255,255,255,0.08); border-radius: 3px; padding: 1px 4px; }
 .b-out-tag  { color: rgba(248,113,113,0.6); font-size: 10px; }
-
-/* Not playing today */
-.b-slot.b-not-today {
-  opacity: 0.18;
-  cursor: default;
-  background: rgba(255,255,255,0.02);
-}
-
-/* Connector pair — wraps two adjacent matchups that feed the same next-round slot.
-   ::after draws the vertical bracket line connecting their midpoints. */
-.b-pair {
-  position: relative;
-}
-/* MH=70, MG=12. Midpoint of first matchup = MH/2 = 35px.
-   Vertical span to midpoint of second matchup = MG + MH = 82px. */
-.b-pair::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 35px;
-  height: 82px;
-  width: 1px;
-  background: rgba(255,255,255,0.15);
-}
-
-/* Legend dot for not-today */
-.dot-not-today { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); }
 
 /* No games card */
 .no-games-card {
@@ -212,8 +140,11 @@
 .no-games-card h2 { margin: 0 0 12px; font-size: 22px; }
 .no-games-card p  { color: rgba(255,255,255,0.5); margin: 0; }
 
+@media (max-width: 900px) {
+  .regions-grid { grid-template-columns: repeat(2, 1fr); }
+}
 @media (max-width: 600px) {
   .picks-header { flex-direction: column; gap: 12px; }
   .picks-deadline-box { text-align: left; }
-  .bracket-region { min-width: 600px; }
+  .regions-grid { grid-template-columns: repeat(2, 1fr); }
 }
