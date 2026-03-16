@@ -381,8 +381,8 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Box Scores */}
-          <div className="lego-card">
+          {/* Box Scores — hidden for now */}
+          {false && <div className="lego-card">
             <div className="lego-label">🏀 Today's Games</div>
             {scoresLoading ? (
               <div className="scores-loading">Loading scores…</div>
@@ -433,7 +433,7 @@ export default function DashboardPage() {
                 })}
               </div>
             )}
-          </div>
+          </div>}
         </div>
       </div>
 
