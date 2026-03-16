@@ -1,0 +1,271 @@
+/* ── Wrapper ─────────────────────────────────────────────── */
+.sg-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sg-table-scroll {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Table ───────────────────────────────────────────────── */
+.sg-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 500px;
+  font-size: 13px;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.sg-table thead tr {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.sg-table th {
+  padding: 9px 12px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  white-space: nowrap;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.08);
+}
+
+.sg-col-name {
+  text-align: left !important;
+}
+
+/* ── Sticky name column ──────────────────────────────────── */
+.sg-sticky {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #141414;
+}
+
+thead .sg-sticky {
+  background: #1c1c1c;
+  z-index: 3;
+}
+
+/* ── Column header ───────────────────────────────────────── */
+.sg-day-round {
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.sg-day-date {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 10px;
+  margin-top: 2px;
+}
+
+.sg-col-future .sg-day-round {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.sg-col-future .sg-day-date {
+  color: rgba(255, 255, 255, 0.15);
+}
+
+/* ── Section header rows ─────────────────────────────────── */
+.sg-section-row td {
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.025);
+  border-top: 2px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.sg-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.sg-alive-label { color: #4ade80; }
+.sg-elim-label  { color: rgba(255, 255, 255, 0.35); }
+
+/* ── Rows ────────────────────────────────────────────────── */
+.sg-row td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.sg-row:hover td {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.sg-row:hover .sg-sticky {
+  background: #1e1e1e;
+}
+
+.sg-row-me td {
+  background: rgba(255, 107, 0, 0.04);
+}
+
+.sg-row-me:hover td {
+  background: rgba(255, 107, 0, 0.07);
+}
+
+.sg-row-me .sg-sticky {
+  background: #161008;
+}
+
+.sg-row-me:hover .sg-sticky {
+  background: #1a100a;
+}
+
+.sg-row-elim td {
+  opacity: 0.6;
+}
+
+/* ── Name cell ───────────────────────────────────────────── */
+.sg-name-cell {
+  padding: 8px 12px;
+  min-width: 150px;
+  white-space: nowrap;
+}
+
+.sg-name-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  display: block;
+}
+
+.sg-me-badge {
+  display: inline-block;
+  background: rgba(255, 107, 0, 0.2);
+  color: #ff6b00;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+.sg-elim-date {
+  display: block;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.28);
+  margin-top: 1px;
+}
+
+/* ── Pick cells ──────────────────────────────────────────── */
+.sg-pick-cell {
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+  border-left: 1px solid rgba(255, 255, 255, 0.04);
+  min-width: 88px;
+}
+
+.sg-pick-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  line-height: 1.5;
+}
+
+.sg-seed {
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+}
+
+.sg-team {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* Won */
+.sg-cell-won { background: rgba(74, 222, 128, 0.08); }
+.sg-cell-won .sg-team { color: #4ade80; }
+.sg-cell-won .sg-seed { color: rgba(74, 222, 128, 0.5); }
+
+/* Lost */
+.sg-cell-lost { background: rgba(248, 113, 113, 0.08); }
+.sg-cell-lost .sg-team { color: #f87171; }
+.sg-cell-lost .sg-seed { color: rgba(248, 113, 113, 0.5); }
+
+/* Pending */
+.sg-cell-pending .sg-team { color: rgba(255, 255, 255, 0.65); }
+
+/* Empty / locked / upcoming */
+.sg-cell-after-elim { background: rgba(255, 255, 255, 0.01); }
+.sg-cell-locked { background: rgba(255, 255, 255, 0.02); }
+.sg-cell-lock { font-size: 12px; opacity: 0.3; }
+.sg-cell-upcoming, .sg-cell-empty { background: transparent; }
+.sg-upcoming-label, .sg-no-pick { color: rgba(255, 255, 255, 0.1); font-size: 11px; }
+
+/* Auto-assigned dot */
+.sg-auto-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  background: #ffd700;
+  border-radius: 50%;
+  margin-left: 3px;
+  flex-shrink: 0;
+}
+
+/* ── Status column ───────────────────────────────────────── */
+.sg-col-status {
+  padding: 8px 12px;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  border-left: 2px solid rgba(255, 255, 255, 0.06);
+}
+
+.sg-status-alive { color: #4ade80; }
+.sg-status-elim  { color: rgba(255, 255, 255, 0.28); font-weight: 400; }
+
+/* ── Empty state ─────────────────────────────────────────── */
+.sg-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 14px;
+}
+
+/* ── Refresh button ──────────────────────────────────────── */
+.sg-refresh-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  align-self: flex-start;
+  transition: all 0.15s;
+}
+
+.sg-refresh-btn:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ── Mobile ──────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .sg-name-cell { min-width: 120px; padding: 7px 10px; }
+  .sg-name-text { font-size: 12px; }
+  .sg-pick-cell { min-width: 76px; padding: 5px 8px; }
+  .sg-team { font-size: 11px; }
+}

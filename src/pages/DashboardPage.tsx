@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Link } from 'react-router-dom'
+import StandingsGrid, { GridParticipant, GridPick, GridDay } from '../components/StandingsGrid'
 import './DashboardPage.css'
 
 interface MyPick {
@@ -33,6 +34,7 @@ interface AllParticipant {
   full_name: string
   is_eliminated: boolean
   is_paid: boolean
+  eliminated_on_date: string | null
 }
 
 interface AllPick {
@@ -86,6 +88,11 @@ export default function DashboardPage() {
   const [dayMetas, setDayMetas] = useState<DayMeta[]>([])
   const [totalPot, setTotalPot] = useState(0)
 
+  // Full standings data (all days, all participants)
+  const [standingsParticipants, setStandingsParticipants] = useState<GridParticipant[]>([])
+  const [standingsPicks, setStandingsPicks] = useState<GridPick[]>([])
+  const [standingsDays, setStandingsDays] = useState<GridDay[]>([])
+
   // ESPN
   const [espnGames, setEspnGames] = useState<EspnGame[]>([])
   const [scoresLoading, setScoresLoading] = useState(true)
@@ -116,6 +123,7 @@ export default function DashboardPage() {
         { data: daysData },
         { count: paidCount },
         { data: recapData },
+        { data: allDaysData },
       ] = await Promise.all([
         supabase.from('picks')
           .select('id, game_date, result, is_auto_assigned, teams(name, seed)')
@@ -129,7 +137,7 @@ export default function DashboardPage() {
           .limit(1),
 
         supabase.from('participants')
-          .select('id, full_name, is_eliminated, is_paid')
+          .select('id, full_name, is_eliminated, is_paid, eliminated_on_date')
           .eq('is_paid', true)
           .order('is_eliminated', { ascending: true })
           .order('full_name', { ascending: true }),
@@ -153,6 +161,11 @@ export default function DashboardPage() {
           .order('id', { ascending: false })
           .limit(1)
           .maybeSingle(),
+
+        // All tournament days (for full standings grid)
+        supabase.from('tournament_days')
+          .select('game_date, round_name, deadline')
+          .order('game_date', { ascending: true }),
       ])
 
       setMyPicks((myPicksData as any) || [])
@@ -169,6 +182,11 @@ export default function DashboardPage() {
       setDayMetas(daysData || [])
       setTotalPot((paidCount || 0) * 25)
       setLatestRecap(recapData)
+
+      // Full standings data
+      setStandingsParticipants(allParticipantsData || [])
+      setStandingsPicks((allPicksData as any) || [])
+      setStandingsDays(allDaysData || [])
     } catch (err) {
       console.error('fetchData error:', err)
     } finally {
@@ -191,13 +209,6 @@ export default function DashboardPage() {
     }
   }
 
-  // Build grid lookup: participantId → gameDate → pick
-  const picksGrid: Record<string, Record<string, AllPick>> = {}
-  allPicks.forEach(p => {
-    if (!picksGrid[p.participant_id]) picksGrid[p.participant_id] = {}
-    picksGrid[p.participant_id][p.game_date] = p
-  })
-
   const aliveCount = allParticipants.filter(p => !p.is_eliminated).length
   const eliminatedCount = allParticipants.filter(p => p.is_eliminated).length
   const totalPicks = myPicks.length
@@ -210,13 +221,6 @@ export default function DashboardPage() {
   }
   function fmtDeadline(d: string) {
     return new Date(d).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
-  }
-  function fmtRound(r: string) {
-    // Shorten round names for column headers
-    return r.replace('Round of 64', 'R64').replace('Round of 32', 'R32')
-      .replace('Sweet 16', 'S16').replace('Elite Eight', 'E8')
-      .replace('Final Four', 'F4').replace('Championship', 'Champ')
-      .replace('National ', '')
   }
   function fmtGameTime(dateStr: string) {
     return new Date(dateStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
@@ -339,48 +343,17 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* LEGO 3 — All Picks Grid */}
-          {dayMetas.length > 0 && (
-            <div className="lego-card">
-              <div className="lego-label">📊 All Picks</div>
-              <div className="picks-grid-wrap">
-                <table className="picks-grid">
-                  <thead>
-                    <tr>
-                      <th className="grid-name-col">Participant</th>
-                      {dayMetas.map(d => (
-                        <th key={d.game_date} className="grid-day-col">
-                          <div className="grid-day-label">{fmtRound(d.round_name)}</div>
-                          <div className="grid-day-date">{new Date(d.game_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {allParticipants.map(p => (
-                      <tr key={p.id} className={`grid-row ${p.is_eliminated ? 'grid-row-out' : ''} ${p.id === participant?.id ? 'grid-row-me' : ''}`}>
-                        <td className="grid-name">
-                          {p.full_name}
-                          {p.id === participant?.id && <span className="me-tag">you</span>}
-                          {p.is_eliminated && <span className="grid-skull">💀</span>}
-                        </td>
-                        {dayMetas.map(d => {
-                          const pick = picksGrid[p.id]?.[d.game_date]
-                          if (!pick) return <td key={d.game_date} className="grid-cell grid-cell-empty">—</td>
-                          return (
-                            <td key={d.game_date} className={`grid-cell grid-cell-${pick.result}`}>
-                              <div className="grid-team">{pick.teams?.name}</div>
-                              <div className="grid-seed">#{pick.teams?.seed}</div>
-                            </td>
-                          )
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+          {/* LEGO 3 — Full Standings Table */}
+          <div className="lego-card">
+            <div className="lego-label">📊 Full Standings</div>
+            <StandingsGrid
+              participants={standingsParticipants}
+              picks={standingsPicks}
+              days={standingsDays}
+              meId={participant?.id}
+              onRefresh={fetchData}
+            />
+          </div>
         </div>
 
         {/* ── RIGHT 1/3 ── */}

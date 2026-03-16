@@ -167,12 +167,21 @@ export default function LoginPage() {
                 Forgot password?
               </button>
             </div>
-            <div className="no-login-link">
-              <span className="no-login-label">Don't want to log in?</span>
-              <button type="button" className="link-btn no-login-btn" onClick={() => window.location.href = '/pick'}>
-                Make your picks here →
-              </button>
+
+            <div className="guest-pick-divider">
+              <span className="guest-pick-divider-line" />
+              <span className="guest-pick-divider-text">or</span>
+              <span className="guest-pick-divider-line" />
             </div>
+
+            <button
+              type="button"
+              className="btn-guest-pick"
+              onClick={() => window.location.href = '/pick'}
+            >
+              🏀 Make picks without an account
+            </button>
+            <p className="guest-pick-note">No account needed — just enter your email</p>
           </form>
         )}
 
