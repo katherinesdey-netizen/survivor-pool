@@ -177,6 +177,33 @@
 .b-used-tag { color: rgba(255,255,255,0.3); font-size: 9px; background: rgba(255,255,255,0.08); border-radius: 3px; padding: 1px 4px; }
 .b-out-tag  { color: rgba(248,113,113,0.6); font-size: 10px; }
 
+/* Not playing today */
+.b-slot.b-not-today {
+  opacity: 0.18;
+  cursor: default;
+  background: rgba(255,255,255,0.02);
+}
+
+/* Connector pair — wraps two adjacent matchups that feed the same next-round slot.
+   ::after draws the vertical bracket line connecting their midpoints. */
+.b-pair {
+  position: relative;
+}
+/* MH=70, MG=12. Midpoint of first matchup = MH/2 = 35px.
+   Vertical span to midpoint of second matchup = MG + MH = 82px. */
+.b-pair::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 35px;
+  height: 82px;
+  width: 1px;
+  background: rgba(255,255,255,0.15);
+}
+
+/* Legend dot for not-today */
+.dot-not-today { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); }
+
 /* No games card */
 .no-games-card {
   background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);

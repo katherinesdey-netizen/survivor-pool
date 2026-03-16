@@ -25,29 +25,36 @@ interface ExistingPick {
   game_date: string
 }
 
+interface Game {
+  id: number
+  game_date: string
+  team1_id: number | null
+  team2_id: number | null
+}
+
 // Standard NCAA bracket — seed pairings per region, in bracket order (top to bottom)
 const R64_PODS: [number,number][] = [[1,16],[8,9],[5,12],[4,13],[6,11],[3,14],[7,10],[2,15]]
 
-const R32_GROUPS  = [
+const R32_GROUPS = [
   {top:[1,16],   bottom:[8,9]  }, {top:[5,12],  bottom:[4,13]  },
   {top:[6,11],   bottom:[3,14] }, {top:[7,10],  bottom:[2,15]  },
 ]
-const S16_GROUPS  = [
+const S16_GROUPS = [
   {top:[1,16,8,9], bottom:[5,12,4,13]  },
   {top:[6,11,3,14],bottom:[7,10,2,15]  },
 ]
-const E8_GROUPS   = [
+const E8_GROUPS = [
   {top:[1,16,8,9,5,12,4,13], bottom:[6,11,3,14,7,10,2,15]},
 ]
 
 const REGIONS = ['East','West','South','Midwest']
 
 // Bracket layout constants
-const TH  = 34   // team slot height (px)
-const TG  = 2    // gap between two teams in same matchup
-const MH  = TH*2 + TG
-const MG  = 12
-const UNIT = MH + MG
+const TH   = 34    // team slot height (px)
+const TG   = 2     // gap between two teams in same matchup
+const MH   = TH*2 + TG   // matchup height = 70
+const MG   = 12            // gap between matchups
+const UNIT = MH + MG       // 82
 
 const SPACERS = [
   { top: MG/2,          between: MG          }, // R64
@@ -66,6 +73,7 @@ function isDayUnlocked(days: TournamentDay[], index: number): boolean {
 export default function PicksPage() {
   const { participant, loading: authLoading } = useAuth()
   const [teams, setTeams]                   = useState<Team[]>([])
+  const [games, setGames]                   = useState<Game[]>([])
   const [allDays, setAllDays]               = useState<TournamentDay[]>([])
   const [selectedDay, setSelectedDay]       = useState<TournamentDay | null>(null)
   const [existingPicks, setExistingPicks]   = useState<ExistingPick[]>([])
@@ -87,17 +95,24 @@ export default function PicksPage() {
     setLoading(true)
     const giveUp = setTimeout(() => setLoading(false), 8000)
     try {
-      const [{ data: daysData }, { data: teamsData }, { data: picksData }] = await Promise.all([
-        supabase.from('tournament_days').select('id, game_date, round_name, picks_required, deadline').order('game_date'),
+      const [
+        { data: daysData },
+        { data: teamsData },
+        { data: picksData },
+        { data: gamesData },
+      ] = await Promise.all([
+        supabase.from('tournament_days').select('id,game_date,round_name,picks_required,deadline').order('game_date'),
         supabase.from('teams').select('id,name,seed,region,is_eliminated').order('seed'),
         supabase.from('picks').select('id,team_id,game_date').eq('participant_id', participant!.id),
+        supabase.from('games').select('id,game_date,team1_id,team2_id'),
       ])
 
-      const days = daysData || []
+      const days  = daysData  || []
       const picks = picksData || []
       setAllDays(days)
       setTeams(teamsData || [])
       setExistingPicks(picks)
+      setGames(gamesData || [])
 
       // Default to the first unlocked day on or after today, else the last unlocked day
       const today = new Date().toISOString().split('T')[0]
@@ -118,7 +133,6 @@ export default function PicksPage() {
     finally { clearTimeout(giveUp); setLoading(false) }
   }
 
-  // Switch to a specific day and load its picks into selectedIds / savedIds
   function applyDay(day: TournamentDay, picks: ExistingPick[]) {
     setSelectedDay(day)
     const dayPicks = picks.filter(p => p.game_date === day.game_date)
@@ -131,8 +145,16 @@ export default function PicksPage() {
     applyDay(day, existingPicks)
   }
 
+  // Teams playing today — null means no game data yet (show all as available)
+  const dayGames = games.filter(g => selectedDay && g.game_date === selectedDay.game_date)
+  const availableTeamIds: Set<number> | null = dayGames.length > 0
+    ? new Set(dayGames.flatMap(g =>
+        [g.team1_id, g.team2_id].filter((id): id is number => id !== null)
+      ))
+    : null
+
   const deadlinePassed = selectedDay ? new Date() > new Date(selectedDay.deadline) : false
-  // "used" = picked on any OTHER day — can't be picked again
+  // "used" = picked on any OTHER day — can't be re-used
   const usedIds = new Set(
     existingPicks.filter(p => selectedDay && p.game_date !== selectedDay.game_date).map(p => p.team_id)
   )
@@ -174,7 +196,6 @@ export default function PicksPage() {
     } else {
       setSavedIds([...selectedIds])
       setMsg({ type:'success', text:'✅ Picks saved! You can update them before the deadline.' })
-      // Refresh existingPicks so "used" badges update across days
       const { data: fresh } = await supabase
         .from('picks').select('id,team_id,game_date').eq('participant_id', participant.id)
       setExistingPicks(fresh || [])
@@ -194,28 +215,31 @@ export default function PicksPage() {
     return seeds.map(s => rt[s]).find(t => t && !t.is_eliminated) || null
   }
 
+  // ── Team slot button ──────────────────────────────────────────────────────
   function TeamSlot({ team, dimmed }: { team: Team | null; dimmed?: boolean }) {
     if (!team) {
       return (
-        <div className="b-slot b-slot-tbd">
+        <div className="b-slot b-slot-tbd" style={{ height: TH }}>
           <span className="b-seed">?</span><span className="b-name">TBD</span>
         </div>
       )
     }
-    const isSelected = selectedIds.includes(team.id)
-    const isUsed     = usedIds.has(team.id)
-    const isOut      = team.is_eliminated
-    const canClick   = !deadlinePassed && !isUsed && !isOut
+    const isSelected     = selectedIds.includes(team.id)
+    const isUsed         = usedIds.has(team.id)
+    const isOut          = team.is_eliminated
+    const isPlayingToday = availableTeamIds === null || availableTeamIds.has(team.id)
+    const canClick       = !deadlinePassed && !isUsed && !isOut && isPlayingToday
 
     return (
       <button
         className={[
           'b-slot',
-          isSelected ? 'b-selected'  : '',
-          isOut      ? 'b-out'       : '',
-          isUsed     ? 'b-used'      : '',
-          dimmed     ? 'b-dimmed'    : '',
-          !canClick  ? 'b-no-click'  : '',
+          isSelected      ? 'b-selected'   : '',
+          isOut           ? 'b-out'         : '',
+          isUsed          ? 'b-used'        : '',
+          !isPlayingToday ? 'b-not-today'   : '',
+          dimmed          ? 'b-dimmed'      : '',
+          !canClick       ? 'b-no-click'    : '',
         ].filter(Boolean).join(' ')}
         onClick={() => canClick && toggleTeam(team.id)}
         disabled={!canClick}
@@ -230,6 +254,29 @@ export default function PicksPage() {
     )
   }
 
+  // ── Single matchup ────────────────────────────────────────────────────────
+  function Matchup({ grp, ri, region }: {
+    grp: { top: number[]; bottom: number[] }
+    ri: number
+    region: string
+  }) {
+    const topTeam    = ri === 0
+      ? (byRegionSeed[region]?.[grp.top[0]]    || null)
+      : getWinner(grp.top, region)
+    const bottomTeam = ri === 0
+      ? (byRegionSeed[region]?.[grp.bottom[0]] || null)
+      : getWinner(grp.bottom, region)
+
+    return (
+      <div className={`b-matchup${ri < 3 ? ' b-matchup-has-line' : ''}`} style={{ height: MH }}>
+        <TeamSlot team={topTeam}    dimmed={ri > 0 && !topTeam} />
+        <div className="b-gap" style={{ height: TG }} />
+        <TeamSlot team={bottomTeam} dimmed={ri > 0 && !bottomTeam} />
+      </div>
+    )
+  }
+
+  // ── Full region bracket ───────────────────────────────────────────────────
   function BracketRegion({ region }: { region: string }) {
     const rounds = [
       { label:'R64', groups: R64_PODS.map(([a,b]) => ({ top:[a], bottom:[b] })) },
@@ -245,28 +292,48 @@ export default function PicksPage() {
         </div>
         <div className="bracket-columns">
           {rounds.map((round, ri) => {
-            const sp = SPACERS[ri]
+            const sp     = SPACERS[ri]
+            const groups = round.groups
+
+            // E8 has 1 group — no pairing needed
+            if (groups.length === 1) {
+              return (
+                <div key={round.label} className="bracket-col">
+                  <div style={{ marginTop: sp.top }}>
+                    <Matchup grp={groups[0]} ri={ri} region={region} />
+                  </div>
+                </div>
+              )
+            }
+
+            // All other rounds: render adjacent groups as pairs so we can draw
+            // a vertical connector line between the two matchups that feed the
+            // same next-round slot.
+            const pairs: React.ReactNode[] = []
+            for (let pi = 0; pi * 2 < groups.length; pi++) {
+              const gi   = pi * 2
+              const grp1 = groups[gi]
+              const grp2 = groups[gi + 1]
+              pairs.push(
+                <div
+                  key={gi}
+                  className="b-pair"
+                  style={{ marginTop: pi === 0 ? sp.top : sp.between }}
+                >
+                  <Matchup grp={grp1} ri={ri} region={region} />
+                  {grp2 && (
+                    <>
+                      <div style={{ height: MG }} />
+                      <Matchup grp={grp2} ri={ri} region={region} />
+                    </>
+                  )}
+                </div>
+              )
+            }
+
             return (
               <div key={round.label} className="bracket-col">
-                {round.groups.map((grp, gi) => {
-                  const topTeam    = ri === 0
-                    ? (byRegionSeed[region]?.[grp.top[0]]    || null)
-                    : getWinner(grp.top, region)
-                  const bottomTeam = ri === 0
-                    ? (byRegionSeed[region]?.[grp.bottom[0]] || null)
-                    : getWinner(grp.bottom, region)
-
-                  return (
-                    <React.Fragment key={gi}>
-                      <div style={{ height: gi === 0 ? sp.top : sp.between }} />
-                      <div className={`b-matchup ${ri < 3 ? 'b-matchup-has-line' : ''}`} style={{ height: MH }}>
-                        <TeamSlot team={topTeam}    dimmed={ri > 0 && !topTeam} />
-                        <div className="b-gap" style={{ height: TG }} />
-                        <TeamSlot team={bottomTeam} dimmed={ri > 0 && !bottomTeam} />
-                      </div>
-                    </React.Fragment>
-                  )
-                })}
+                {pairs}
               </div>
             )
           })}
@@ -275,6 +342,7 @@ export default function PicksPage() {
     )
   }
 
+  // ── Render ────────────────────────────────────────────────────────────────
   if (loading) return <div className="loading-screen"><div className="spinner" /></div>
 
   if (allDays.length === 0) return (
@@ -289,6 +357,8 @@ export default function PicksPage() {
 
   return (
     <div className="picks-page">
+
+      {/* Header */}
       <div className="picks-header">
         <div>
           <h1 className="picks-page-title">My Picks</h1>
@@ -312,22 +382,22 @@ export default function PicksPage() {
       {/* Day selector */}
       <div className="day-selector">
         {allDays.map((day, i) => {
-          const unlocked   = isDayUnlocked(allDays, i)
-          const isActive   = selectedDay?.game_date === day.game_date
-          const hasPicks   = existingPicks.some(p => p.game_date === day.game_date)
-          const isPast     = new Date() > new Date(day.deadline)
+          const unlocked = isDayUnlocked(allDays, i)
+          const isActive = selectedDay?.game_date === day.game_date
+          const hasPicks = existingPicks.some(p => p.game_date === day.game_date)
+          const isPast   = new Date() > new Date(day.deadline)
           return (
             <button
               key={day.game_date}
               className={[
                 'day-pill',
-                isActive   ? 'day-pill-active'  : '',
-                !unlocked  ? 'day-pill-locked'  : '',
+                isActive   ? 'day-pill-active' : '',
+                !unlocked  ? 'day-pill-locked' : '',
                 isPast && !isActive ? 'day-pill-past' : '',
               ].filter(Boolean).join(' ')}
               onClick={() => unlocked && handleDaySelect(day)}
               disabled={!unlocked}
-              title={unlocked ? day.round_name : 'Unlocks after the previous day\'s games close'}
+              title={unlocked ? day.round_name : "Unlocks after the previous day's games close"}
             >
               <span className="day-pill-name">{day.round_name}</span>
               {hasPicks && unlocked && <span className="day-pill-dot" title="Picks submitted" />}
@@ -379,10 +449,13 @@ export default function PicksPage() {
 
       {/* Legend */}
       <div className="bracket-legend">
-        <span className="legend-item"><span className="legend-dot dot-alive" />Available</span>
-        <span className="legend-item"><span className="legend-dot dot-selected" />Selected</span>
+        <span className="legend-item"><span className="legend-dot dot-alive" />Playing today</span>
+        <span className="legend-item"><span className="legend-dot dot-selected" />Your pick</span>
         <span className="legend-item"><span className="legend-dot dot-used" />Already used</span>
         <span className="legend-item"><span className="legend-dot dot-out" />Eliminated</span>
+        {availableTeamIds !== null && (
+          <span className="legend-item"><span className="legend-dot dot-not-today" />Not today</span>
+        )}
       </div>
 
       {/* Region tabs */}
@@ -402,6 +475,7 @@ export default function PicksPage() {
       <div className="bracket-wrap">
         <BracketRegion region={activeRegion} />
       </div>
+
     </div>
   )
 }
