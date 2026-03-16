@@ -163,7 +163,7 @@ thead .sg-sticky {
 
 /* ── Pick cells ──────────────────────────────────────────── */
 .sg-pick-cell {
-  padding: 6px 10px;
+  padding: 6px 10px 6px 12px;
   text-align: left;
   vertical-align: middle;
   white-space: nowrap;
@@ -266,6 +266,6 @@ thead .sg-sticky {
 @media (max-width: 600px) {
   .sg-name-cell { min-width: 120px; padding: 7px 10px; }
   .sg-name-text { font-size: 12px; }
-  .sg-pick-cell { min-width: 76px; padding: 5px 8px; }
+  .sg-pick-cell { min-width: 76px; padding: 5px 8px 5px 10px; }
   .sg-team { font-size: 11px; }
 }

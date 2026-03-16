@@ -137,7 +137,7 @@ export default function LoginPage() {
       <div className="login-bg" />
       <div className="login-card">
         <div className="login-header">
-          <div className="login-bracket">🏀</div>
+          <img src="/logo.png" alt="Pool Logo" className="login-logo" />
           <h1>March Madness<br />Survivor Pool</h1>
           <p className="login-subtitle">2026 · Adam's Pool</p>
         </div>

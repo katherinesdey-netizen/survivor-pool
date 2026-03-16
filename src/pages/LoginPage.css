@@ -40,9 +40,12 @@
   margin-bottom: 36px;
 }
 
-.login-bracket {
-  font-size: 48px;
+.login-logo {
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
   margin-bottom: 12px;
+  border-radius: 16px;
 }
 
 .login-header h1 {
