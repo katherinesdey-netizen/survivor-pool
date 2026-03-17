@@ -292,21 +292,27 @@ export default function AdminPage() {
     setSaving(null)
   }
 
-  async function handleSendRecap(id: number) {
-    if (!window.confirm('Send this recap to all paid participants via email?')) return
-    setSendingRecapId(id)
+  async function handleSendRecap(id: number, testOnly = false) {
+    const confirmMsg = testOnly
+      ? 'Send a test email to adamsfurtado@gmail.com?'
+      : 'Send this recap to all paid participants via email?'
+    if (!window.confirm(confirmMsg)) return
+    setSendingRecapId(testOnly ? id * -1 : id)
     try {
+      const body: any = { recap_id: id }
+      if (testOnly) body.test_email = 'adamsfurtado@gmail.com'
       const res = await fetch('/api/send-recap', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.REACT_APP_CRON_SECRET || ''}`,
         },
-        body: JSON.stringify({ recap_id: id }),
+        body: JSON.stringify(body),
       })
       const data = await res.json()
       if (res.ok) {
-        setRecapSentMsg(prev => ({ ...prev, [id]: `Sent to ${data.sent} participants ✓` }))
+        const msg = testOnly ? 'Test sent to adamsfurtado@gmail.com ✓' : `Sent to ${data.sent} participants ✓`
+        setRecapSentMsg(prev => ({ ...prev, [id]: msg }))
       } else {
         setRecapSentMsg(prev => ({ ...prev, [id]: `Error: ${data.error || 'Unknown error'}` }))
       }
@@ -619,6 +625,13 @@ export default function AdminPage() {
                           {recapSentMsg[recap.id]}
                         </div>
                       )}
+                      <button
+                        className="action-btn btn-test"
+                        onClick={() => handleSendRecap(recap.id, true)}
+                        disabled={sendingRecapId === recap.id * -1}
+                      >
+                        {sendingRecapId === recap.id * -1 ? 'Sending...' : '🧪 Test'}
+                      </button>
                       <button
                         className="action-btn btn-email"
                         onClick={() => handleSendRecap(recap.id)}

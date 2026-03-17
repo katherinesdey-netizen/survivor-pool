@@ -23,7 +23,7 @@ module.exports = async (req, res) => {
   if (secret && req.headers.authorization !== `Bearer ${secret}`)
     return res.status(401).json({ error: 'Unauthorized' })
 
-  const { recap_id } = req.body || {}
+  const { recap_id, test_email } = req.body || {}
   if (!recap_id) return res.status(400).json({ error: 'Missing recap_id' })
 
   try {
@@ -36,6 +36,28 @@ module.exports = async (req, res) => {
 
     if (rErr || !recap) return res.status(404).json({ error: 'Recap not found' })
 
+    const resend = new Resend(process.env.RESEND_API_KEY)
+
+    const dateLabel = new Date(recap.game_date + 'T12:00:00').toLocaleDateString('en-US', {
+      weekday: 'long', month: 'long', day: 'numeric'
+    })
+
+    const subject = test_email
+      ? `[TEST] 📊 ${recap.title} — Adams Survivor Pool`
+      : `📊 ${recap.title} — Adams Survivor Pool`
+    const html = recapHtml(recap.title, recap.body, dateLabel)
+
+    // Test mode: send only to the provided address
+    if (test_email) {
+      await resend.emails.send({
+        from: 'Adam Furtado <adam@adamssurvivorpool.com>',
+        to: [test_email],
+        subject,
+        html,
+      })
+      return res.status(200).json({ sent: 1, total: 1, test: true })
+    }
+
     // Get all paid participants
     const { data: participants } = await supabase
       .from('participants')
@@ -44,15 +66,6 @@ module.exports = async (req, res) => {
 
     if (!participants || participants.length === 0)
       return res.status(200).json({ message: 'No paid participants found.', sent: 0 })
-
-    const resend = new Resend(process.env.RESEND_API_KEY)
-
-    const dateLabel = new Date(recap.game_date + 'T12:00:00').toLocaleDateString('en-US', {
-      weekday: 'long', month: 'long', day: 'numeric'
-    })
-
-    const subject = `📊 ${recap.title} — Adams Survivor Pool`
-    const html = recapHtml(recap.title, recap.body, dateLabel)
 
     // Send in batches of 50 to stay within rate limits
     const batchSize = 50

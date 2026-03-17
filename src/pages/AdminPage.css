@@ -185,6 +185,8 @@
 .btn-danger:hover:not(:disabled) { background: rgba(255,60,60,0.25); }
 .btn-email { background: rgba(99,102,241,0.15); color: #a5b4fc; }
 .btn-email:hover:not(:disabled) { background: rgba(99,102,241,0.25); }
+.btn-test { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.45); }
+.btn-test:hover:not(:disabled) { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); }
 
 /* Result select */
 .result-select {
