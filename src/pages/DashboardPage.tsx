@@ -107,6 +107,8 @@ export default function DashboardPage() {
   const [pickCounts, setPickCounts] = useState<Record<number, number>>({})
   const [scoresLoading, setScoresLoading] = useState(true)
   const allDaysRef = useRef<string[]>([])
+  // Map of game_date → deadline string, used to gate pick count display
+  const [dayDeadlines, setDayDeadlines] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (authLoading) return
@@ -214,6 +216,12 @@ export default function DashboardPage() {
 
       // Store all tournament day dates for games widget
       allDaysRef.current = (allDaysData || []).map((d: any) => d.game_date)
+      // Build deadline lookup for pick count gating
+      const deadlineMap: Record<string, string> = {}
+      for (const d of (allDaysData || [])) {
+        if (d.deadline) deadlineMap[d.game_date] = d.deadline
+      }
+      setDayDeadlines(deadlineMap)
       // Re-fetch scores now that we have the day list
       fetchScores()
     } catch (err) {
@@ -534,6 +542,8 @@ export default function DashboardPage() {
                       {dayGames.map(game => {
                         const isLive = game.status === 'live'
                         const isFinal = game.status === 'final'
+                        const deadline = dayDeadlines[game.game_date]
+                        const showPickCounts = deadline ? new Date() > new Date(deadline) : false
                         const teams = [
                           { team: game.team1, score: game.score1, winner: game.winner1 },
                           { team: game.team2, score: game.score2, winner: game.winner2 },
@@ -564,9 +574,11 @@ export default function DashboardPage() {
                                 <span className="game-score">
                                   {(isLive || isFinal) ? score : ''}
                                 </span>
-                                <span className="game-pick-count">
-                                  <span>{pickCounts[team.id] ?? 0}</span>
-                                </span>
+                                {showPickCounts && (
+                                  <span className="game-pick-count">
+                                    <span>{pickCounts[team.id] ?? 0}</span>
+                                  </span>
+                                )}
                               </div>
                             ))}
                           </div>

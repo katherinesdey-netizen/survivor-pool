@@ -239,7 +239,7 @@
 /* Each team row: [seed] [name……] [score] [picks] */
 .game-team-row {
   display: grid;
-  grid-template-columns: 24px 1fr 28px 28px;
+  grid-template-columns: 24px 1fr 28px auto;
   align-items: center;
   gap: 0 6px;
   padding: 2px 0;
