@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import './AdminPage.css'
@@ -76,6 +76,8 @@ export default function AdminPage() {
   const [recapTitle, setRecapTitle] = useState('')
   const [recapBody, setRecapBody] = useState('')
   const [recapDate, setRecapDate] = useState(new Date().toISOString().split('T')[0])
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { fetchData() }, [])
 
@@ -235,6 +237,29 @@ export default function AdminPage() {
     return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', {
       month: 'short', day: 'numeric'
     })
+  }
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingImage(true)
+    const ext = file.name.split('.').pop() || 'jpg'
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    const { error } = await supabase.storage
+      .from('recap-media')
+      .upload(path, file, { contentType: file.type })
+    if (error) {
+      showMsg('error', 'Upload failed: ' + error.message)
+      setUploadingImage(false)
+      e.target.value = ''
+      return
+    }
+    const { data: urlData } = supabase.storage.from('recap-media').getPublicUrl(path)
+    const url = urlData.publicUrl
+    setRecapBody(prev => prev + (prev === '' || prev.endsWith('\n') ? '' : '\n') + url + '\n')
+    showMsg('success', 'Image uploaded — URL added to recap body.')
+    setUploadingImage(false)
+    e.target.value = ''
   }
 
   async function handleSaveRecap(e: React.FormEvent) {
@@ -590,16 +615,32 @@ export default function AdminPage() {
               <div className="assign-field">
                 <label>Recap <span style={{fontWeight:400, color:'rgba(255,255,255,0.35)'}}>— use **bold** for emphasis, new lines for paragraphs</span></label>
                 <div className="recap-img-hint">
-                  To add an image or GIF inline, paste the direct URL on its own line:<br/>
-                  <code>https://i.imgur.com/your-image.jpg</code>
+                  <strong style={{color:'rgba(255,255,255,0.6)'}}>Media:</strong> Upload a photo/GIF below, or paste a URL on its own line. YouTube links auto-embed.<br/>
+                  <code>https://youtu.be/abc123</code> &nbsp;or&nbsp; <code>https://i.imgur.com/abc.gif</code>
                 </div>
                 <textarea
                   value={recapBody}
                   onChange={e => setRecapBody(e.target.value)}
-                  placeholder={`Duke came out firing today.\n\n[img:https://media.giphy.com/xxx.gif]\n\nMeanwhile on the other side of the bracket...`}
+                  placeholder={`Duke came out firing today.\n\nhttps://youtu.be/abc123\n\nMeanwhile on the other side of the bracket...`}
                   rows={12}
                   required
                 />
+                {/* Hidden file input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,.gif"
+                  style={{ display: 'none' }}
+                  onChange={handleImageUpload}
+                />
+                <button
+                  type="button"
+                  className="btn-upload"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingImage}
+                >
+                  {uploadingImage ? '⏳ Uploading...' : '📎 Upload Image / GIF'}
+                </button>
               </div>
               <button type="submit" className="btn-primary" disabled={saving === 'recap'}>
                 {saving === 'recap' ? 'Posting...' : '📝 Post Recap'}

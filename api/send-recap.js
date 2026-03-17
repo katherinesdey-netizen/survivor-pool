@@ -93,8 +93,14 @@ module.exports = async (req, res) => {
   }
 }
 
+// Extract YouTube video ID from a URL, or return null
+function getYouTubeId(url) {
+  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+  return m ? m[1] : null
+}
+
 // Convert plain recap body text to HTML
-// Handles: **bold**, newlines, [img:url], bare https:// urls
+// Handles: **bold**, newlines, [img:url], bare image URLs, YouTube URLs
 function formatRecapBody(text) {
   if (!text) return ''
 
@@ -103,6 +109,17 @@ function formatRecapBody(text) {
     .map(line => {
       const trimmed = line.trim()
       if (!trimmed) return '<br>'
+
+      // YouTube URL → clickable thumbnail
+      const youtubeId = getYouTubeId(trimmed)
+      if (youtubeId && trimmed.match(/^https?:\/\//)) {
+        const thumb = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`
+        const link = `https://www.youtube.com/watch?v=${youtubeId}`
+        return `<a href="${link}" style="display:block;text-decoration:none;margin:12px 0;">` +
+          `<img src="${thumb}" style="max-width:100%;border-radius:8px;display:block;" alt="YouTube video">` +
+          `<div style="color:#a5b4fc;font-size:13px;font-weight:600;margin-top:6px;">▶ Watch on YouTube</div>` +
+          `</a>`
+      }
 
       // Image markers: [img:url] or bare image URLs
       const imgMatch = trimmed.match(/^\[img:(https?:\/\/[^\]]+)\]$/)

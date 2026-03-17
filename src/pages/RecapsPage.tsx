@@ -42,13 +42,35 @@ export default function RecapsPage() {
     })
   }
 
+  function getYouTubeId(url: string): string | null {
+    const m = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+    return m ? m[1] : null
+  }
+
   function renderBody(body: string) {
     return body
       .split('\n')
       .map((line, i) => {
         const trimmed = line.trim()
 
-        // [img:URL] tag or bare URL on its own line → render as image
+        // YouTube URL on its own line → embedded player
+        const youtubeId = getYouTubeId(trimmed)
+        if (youtubeId && trimmed.match(/^https?:\/\//)) {
+          return (
+            <div key={i} className="recap-video-wrap">
+              <iframe
+                src={`https://www.youtube.com/embed/${youtubeId}`}
+                title="YouTube video"
+                className="recap-youtube"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          )
+        }
+
+        // [img:URL] tag or bare image/GIF URL on its own line → render as image
         const imgTagMatch = trimmed.match(/^\[img:(.+)\]$/)
         const bareUrl = trimmed.match(/^https?:\/\/\S+$/)
         const imgSrc = imgTagMatch ? imgTagMatch[1] : (bareUrl ? bareUrl[0] : null)
