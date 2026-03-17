@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Link } from 'react-router-dom'
@@ -50,8 +50,16 @@ interface DayMeta {
   round_name: string
 }
 
+interface DbGame {
+  id: number
+  game_date: string
+  team1: { id: number; name: string; seed: number; region: string }
+  team2: { id: number; name: string; seed: number; region: string }
+}
+
 interface EspnTeam {
-  team: { displayName: string; abbreviation: string }
+  team: { displayName: string; shortDisplayName: string; abbreviation: string }
+  curatedRank?: { current: number }
   score: string
   homeAway: string
   winner?: boolean
@@ -88,31 +96,44 @@ export default function DashboardPage() {
   const [dayMetas, setDayMetas] = useState<DayMeta[]>([]) // eslint-disable-line @typescript-eslint/no-unused-vars
   const [totalPot, setTotalPot] = useState(0)
 
-  // Full standings data (all days, all participants)
+  // Full standings data
   const [standingsParticipants, setStandingsParticipants] = useState<GridParticipant[]>([])
   const [standingsPicks, setStandingsPicks] = useState<GridPick[]>([])
   const [standingsDays, setStandingsDays] = useState<GridDay[]>([])
 
-  // ESPN
+  // Games widget
   const [espnGames, setEspnGames] = useState<EspnGame[]>([])
+  const [dbGames, setDbGames] = useState<DbGame[]>([])
+  const [pickCounts, setPickCounts] = useState<Record<number, number>>({})
   const [scoresLoading, setScoresLoading] = useState(true)
+  const allDaysRef = useRef<string[]>([])
 
   useEffect(() => {
-    if (authLoading) return          // wait for auth to resolve
-    if (!participant) {
-      setLoading(false)              // auth done but no participant — stop spinning
-      return
-    }
+    if (authLoading) return
+    if (!participant) { setLoading(false); return }
     fetchData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [participant, authLoading])
 
-  // ESPN — 30s when live games, 60s otherwise
+  // Scores: poll every 30s
   useEffect(() => {
     fetchScores()
     const iv = setInterval(fetchScores, 30000)
     return () => clearInterval(iv)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Which dates to display in the games widget
+  function getDisplayDates(): string[] {
+    const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+    // Before Mar 20: always show First Four (Mar 18) + Round of 64 Thursday (Mar 19)
+    if (todayET <= '2026-03-19') return ['2026-03-18', '2026-03-19']
+    // After that: show today if it's a tournament day, else next upcoming day
+    const days = allDaysRef.current
+    if (days.includes(todayET)) return [todayET]
+    const next = days.find(d => d > todayET)
+    return next ? [next] : []
+  }
 
   async function fetchData() {
     setLoading(true)
@@ -167,7 +188,6 @@ export default function DashboardPage() {
           .limit(1)
           .maybeSingle(),
 
-        // All tournament days (for full standings grid)
         supabase.from('tournament_days')
           .select('game_date, round_name, deadline')
           .order('game_date', { ascending: true }),
@@ -188,10 +208,14 @@ export default function DashboardPage() {
       setTotalPot((paidCount || 0) * 25)
       setLatestRecap(recapData)
 
-      // Full standings data
       setStandingsParticipants(allParticipantsData || [])
       setStandingsPicks((allPicksData as any) || [])
       setStandingsDays(allDaysData || [])
+
+      // Store all tournament day dates for games widget
+      allDaysRef.current = (allDaysData || []).map((d: any) => d.game_date)
+      // Re-fetch scores now that we have the day list
+      fetchScores()
     } catch (err) {
       console.error('fetchData error:', err)
     } finally {
@@ -203,16 +227,114 @@ export default function DashboardPage() {
   async function fetchScores() {
     setScoresLoading(true)
     try {
-      const res = await fetch(
-        'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=100'
+      const displayDates = getDisplayDates()
+      if (displayDates.length === 0) { setScoresLoading(false); return }
+
+      // 1. ESPN — parallel fetch per date
+      const espnResults = await Promise.all(
+        displayDates.map(d =>
+          fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=100&dates=${d.replace(/-/g, '')}`)
+            .then(r => r.json())
+            .then(data => data.events || [])
+            .catch(() => [])
+        )
       )
-      const data = await res.json()
-      setEspnGames(data.events || [])
+      setEspnGames(espnResults.flat())
+
+      // 2. Our DB games for those dates (with team info)
+      const { data: gamesData } = await supabase
+        .from('games')
+        .select('id, game_date, team1:team1_id(id, name, seed, region), team2:team2_id(id, name, seed, region)')
+        .in('game_date', displayDates)
+        .order('game_date')
+      setDbGames((gamesData as any) || [])
+
+      // 3. Pick counts for those dates
+      const { data: picksData } = await supabase
+        .from('picks')
+        .select('team_id')
+        .in('game_date', displayDates)
+
+      const counts: Record<number, number> = {}
+      for (const p of (picksData || [])) {
+        counts[p.team_id] = (counts[p.team_id] || 0) + 1
+      }
+      setPickCounts(counts)
     } catch {
-      // silently fail — scores are optional
+      // silent — scores are optional
     } finally {
       setScoresLoading(false)
     }
+  }
+
+  // Merge our DB games with ESPN live data
+  function buildMergedGames() {
+    function nameMatch(espnName: string, dbName: string): boolean {
+      const a = (espnName || '').toLowerCase().trim()
+      const b = (dbName || '').toLowerCase().trim()
+      if (a === b) return true
+      // First-word match (e.g. "Duke" matches "Duke Blue Devils")
+      const aFirst = a.split(' ')[0]
+      const bFirst = b.split(' ')[0]
+      return aFirst === bFirst || a.includes(bFirst) || b.includes(aFirst)
+    }
+
+    type MergedGame = DbGame & {
+      startTime: Date
+      network: string
+      status: 'pre' | 'live' | 'final'
+      halfLabel: string
+      clock: string
+      score1: string
+      score2: string
+      winner1: boolean
+      winner2: boolean
+    }
+
+    const merged: MergedGame[] = dbGames.map(dbGame => {
+      const base: MergedGame = {
+        ...dbGame,
+        startTime: new Date(dbGame.game_date + 'T23:59:00'),
+        network: '', status: 'pre', halfLabel: '', clock: '',
+        score1: '', score2: '', winner1: false, winner2: false,
+      }
+
+      // Find matching ESPN game by team name
+      const espnGame = espnGames.find(eg => {
+        const comps = eg.competitions[0].competitors
+        const t1matched = comps.some(c => nameMatch(c.team.shortDisplayName || c.team.displayName, dbGame.team1.name))
+        const t2matched = comps.some(c => nameMatch(c.team.shortDisplayName || c.team.displayName, dbGame.team2.name))
+        return t1matched && t2matched
+      })
+
+      if (!espnGame) return base
+
+      const comp = espnGame.competitions[0]
+      const st = comp.status
+      base.startTime = new Date(espnGame.date)
+      base.network = comp.broadcasts?.[0]?.media?.shortName || ''
+      if (st.type.completed) base.status = 'final'
+      else if (st.type.name === 'STATUS_IN_PROGRESS') base.status = 'live'
+
+      const p = st.period
+      base.halfLabel = p === 1 ? '1st Half' : p === 2 ? '2nd Half' : p > 2 ? `OT${p - 2}` : ''
+      base.clock = st.displayClock
+
+      const findComp = (dbName: string) =>
+        comp.competitors.find(c => nameMatch(c.team.shortDisplayName || c.team.displayName, dbName))
+
+      const c1 = findComp(dbGame.team1.name)
+      const c2 = findComp(dbGame.team2.name)
+      if (c1) { base.score1 = c1.score; base.winner1 = c1.winner || false }
+      if (c2) { base.score2 = c2.score; base.winner2 = c2.winner || false }
+
+      return base
+    })
+
+    // Sort: non-finals by tip time, finals sink to bottom
+    const active = merged.filter(g => g.status !== 'final').sort((a, b) => a.startTime.getTime() - b.startTime.getTime())
+    const finals = merged.filter(g => g.status === 'final').sort((a, b) => a.startTime.getTime() - b.startTime.getTime())
+    return [...active, ...finals]
   }
 
   const aliveCount = allParticipants.filter(p => !p.is_eliminated).length
@@ -228,11 +350,18 @@ export default function DashboardPage() {
   function fmtDeadline(d: string) {
     return new Date(d).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
   }
-  function fmtGameTime(dateStr: string) {
-    return new Date(dateStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })
+  function fmtTipTime(d: Date) {
+    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York', timeZoneName: 'short' })
+  }
+  function fmtDayHeader(d: string) {
+    return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
   }
 
   if (loading) return <div className="loading-screen"><div className="spinner" /></div>
+
+  const mergedGames = buildMergedGames()
+  const displayDates = getDisplayDates()
+  const showDateHeaders = displayDates.length > 1
 
   return (
     <div className="dashboard">
@@ -381,59 +510,75 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Box Scores — hidden for now */}
-          {false && <div className="lego-card">
+          {/* LEGO — Upcoming Games */}
+          <div className="lego-card">
             <div className="lego-label">🏀 Today's Games</div>
-            {scoresLoading ? (
-              <div className="scores-loading">Loading scores…</div>
-            ) : espnGames.length === 0 ? (
-              <div className="scores-empty">No NCAA Tournament games today.<br/><span style={{fontSize:'12px', color:'rgba(255,255,255,0.3)'}}>Check back on game days.</span></div>
+
+            {scoresLoading && mergedGames.length === 0 ? (
+              <div className="scores-loading">Loading games…</div>
+            ) : mergedGames.length === 0 ? (
+              <div className="scores-empty">
+                No games right now.<br />
+                <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)' }}>Check back on game days.</span>
+              </div>
             ) : (
-              <div className="scores-list">
-                {espnGames.map(game => {
-                  const comp = game.competitions[0]
-                  const status = comp.status
-                  const home = comp.competitors.find(c => c.homeAway === 'home')
-                  const away = comp.competitors.find(c => c.homeAway === 'away')
-                  const isLive = status.type.name === 'STATUS_IN_PROGRESS'
-                  const isFinal = status.type.completed
-                  const isScheduled = !isLive && !isFinal // eslint-disable-line @typescript-eslint/no-unused-vars
-
-                  const network = comp.broadcasts?.[0]?.media?.shortName || null
-                  const period = status.period
-                  const clock = status.displayClock
-                  const periodLabel = period === 1 ? '1st Half' : period === 2 ? '2nd Half' : period > 2 ? `OT${period - 2}` : ''
-
+              <div className="games-list">
+                {displayDates.map(date => {
+                  const dayGames = mergedGames.filter(g => g.game_date === date)
+                  if (dayGames.length === 0) return null
                   return (
-                    <div key={game.id} className={`score-card ${isLive ? 'score-live' : ''}`}>
-                      <div className="score-header">
-                        <div className="score-status">
-                          {isLive && <span className="live-dot" />}
-                          <span className={`score-status-text ${isLive ? 'live-text' : ''}`}>
-                            {isLive
-                              ? `${periodLabel} · ${clock}`
-                              : isFinal ? 'Final'
-                              : fmtGameTime(game.date)}
-                          </span>
-                        </div>
-                        {network && <span className="score-network">{network}</span>}
-                      </div>
-                      <div className="score-matchup">
-                        <div className={`score-team ${away?.winner ? 'score-winner' : isFinal && !away?.winner ? 'score-loser' : ''}`}>
-                          <span className="score-team-name">{away?.team.displayName}</span>
-                          {(isLive || isFinal) && <span className="score-pts">{away?.score}</span>}
-                        </div>
-                        <div className={`score-team ${home?.winner ? 'score-winner' : isFinal && !home?.winner ? 'score-loser' : ''}`}>
-                          <span className="score-team-name">{home?.team.displayName}</span>
-                          {(isLive || isFinal) && <span className="score-pts">{home?.score}</span>}
-                        </div>
-                      </div>
-                    </div>
+                    <React.Fragment key={date}>
+                      {showDateHeaders && (
+                        <div className="games-date-divider">{fmtDayHeader(date)}</div>
+                      )}
+                      {dayGames.map(game => {
+                        const isLive = game.status === 'live'
+                        const isFinal = game.status === 'final'
+                        const teams = [
+                          { team: game.team1, score: game.score1, winner: game.winner1 },
+                          { team: game.team2, score: game.score2, winner: game.winner2 },
+                        ]
+                        return (
+                          <div key={game.id} className={`game-card${isLive ? ' game-live' : isFinal ? ' game-final' : ''}`}>
+                            <div className="game-header">
+                              <div className="game-status-wrap">
+                                {isLive && <span className="live-dot" />}
+                                <span className={`game-status-text${isLive ? ' status-live' : ''}`}>
+                                  {isFinal
+                                    ? 'Final'
+                                    : isLive
+                                    ? `${game.halfLabel} · ${game.clock}`
+                                    : fmtTipTime(game.startTime)}
+                                </span>
+                              </div>
+                              {game.network && <span className="game-network">{game.network}</span>}
+                            </div>
+
+                            {teams.map(({ team, score, winner }) => (
+                              <div
+                                key={team.id}
+                                className={`game-team-row${isFinal ? (winner ? ' team-winner' : ' team-loser') : ''}`}
+                              >
+                                <span className="game-seed-badge">{team.seed}</span>
+                                <span className="game-team-name">{team.name}</span>
+                                <span className="game-score">
+                                  {(isLive || isFinal) ? score : ''}
+                                </span>
+                                <span className="game-pick-count">
+                                  <span>{pickCounts[team.id] ?? 0}</span>
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )
+                      })}
+                    </React.Fragment>
                   )
                 })}
               </div>
             )}
-          </div>}
+          </div>
+
         </div>
       </div>
 

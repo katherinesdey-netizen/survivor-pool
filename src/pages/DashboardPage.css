@@ -181,39 +181,119 @@
 .recap-read-more { font-size: 13px; color: #ff6b00; text-decoration: none; font-weight: 500; }
 .recap-read-more:hover { text-decoration: underline; }
 
-/* ── Box Scores ── */
+/* ── Games Widget ── */
 .scores-loading, .scores-empty { font-size: 13px; color: rgba(255,255,255,0.4); padding: 8px 0; }
-.scores-list { display: flex; flex-direction: column; gap: 8px; }
-.score-card {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 10px;
-  padding: 10px 14px;
+.games-list { display: flex; flex-direction: column; gap: 0; }
+
+.games-date-divider {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.3);
+  padding: 10px 0 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 8px;
 }
-.score-card.score-live {
+.games-date-divider:first-child { padding-top: 0; }
+
+.game-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  padding: 9px 12px;
+  margin-bottom: 7px;
+}
+.game-card:last-child { margin-bottom: 0; }
+.game-card.game-live {
   border-color: rgba(74,222,128,0.3);
   background: rgba(74,222,128,0.05);
 }
-.score-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.score-status { display: flex; align-items: center; gap: 6px; }
-.score-network { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.35); background: rgba(255,255,255,0.07); border-radius: 4px; padding: 2px 6px; letter-spacing: 0.04em; }
+.game-card.game-final { opacity: 0.55; }
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 7px;
+}
+.game-status-wrap { display: flex; align-items: center; gap: 5px; }
+.game-status-text {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.4);
+}
+.game-status-text.status-live { color: #4ade80; }
+.game-network {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.07);
+  border-radius: 4px;
+  padding: 2px 5px;
+  letter-spacing: 0.04em;
+}
+
+/* Each team row: [seed] [name……] [score] [picks] */
+.game-team-row {
+  display: grid;
+  grid-template-columns: 24px 1fr 28px 28px;
+  align-items: center;
+  gap: 0 6px;
+  padding: 2px 0;
+}
+.game-seed-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.07);
+  border-radius: 3px;
+  padding: 1px 3px;
+  text-align: center;
+}
+.game-team-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.game-team-row.team-winner .game-team-name { color: #fff; }
+.game-team-row.team-loser  .game-team-name { color: rgba(255,255,255,0.35); }
+
+.game-score {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  text-align: right;
+  min-width: 24px;
+}
+.game-team-row.team-loser .game-score { color: rgba(255,255,255,0.35); }
+
+.game-pick-count {
+  text-align: right;
+}
+.game-pick-count span {
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(255,107,0,0.18);
+  color: rgba(255,140,60,0.9);
+  border-radius: 8px;
+  padding: 1px 5px;
+  display: inline-block;
+}
+
+/* Live dot */
 .live-dot {
-  width: 7px; height: 7px; border-radius: 50%;
+  width: 6px; height: 6px; border-radius: 50%;
   background: #4ade80;
   animation: pulse 1.5s ease-in-out infinite;
+  flex-shrink: 0;
 }
 @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
-.score-status-text { font-size: 11px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.06em; }
-.score-status-text.live-text { color: #4ade80; }
-.score-matchup { display: flex; flex-direction: column; gap: 4px; }
-.score-team { display: flex; justify-content: space-between; align-items: center; }
-.score-team-name { font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.85); }
-.score-winner .score-team-name { color: #fff; }
-.score-loser .score-team-name { color: rgba(255,255,255,0.4); }
-.score-pts { font-size: 16px; font-weight: 700; color: #fff; }
-.score-winner .score-pts { color: #fff; }
-.score-loser .score-pts { color: rgba(255,255,255,0.4); }
-.score-time { font-size: 13px; color: rgba(255,255,255,0.5); margin-top: 4px; }
 
 /* ── Rules bar ── */
 .rules-link-bar { text-align: center; font-size: 13px; color: rgba(255,255,255,0.3); padding: 8px 0; }
