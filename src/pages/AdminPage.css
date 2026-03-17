@@ -183,6 +183,8 @@
 
 .btn-danger { background: rgba(255,60,60,0.15); color: #f87171; }
 .btn-danger:hover:not(:disabled) { background: rgba(255,60,60,0.25); }
+.btn-email { background: rgba(99,102,241,0.15); color: #a5b4fc; }
+.btn-email:hover:not(:disabled) { background: rgba(99,102,241,0.25); }
 
 /* Result select */
 .result-select {
@@ -520,6 +522,23 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.recap-admin-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.recap-sent-msg {
+  font-size: 11px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.recap-sent-ok { color: #4ade80; }
+.recap-sent-error { color: #f87171; }
 
 .recap-img-hint {
   background: rgba(255,255,255,0.04);

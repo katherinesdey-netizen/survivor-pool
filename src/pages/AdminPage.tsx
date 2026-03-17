@@ -64,6 +64,8 @@ export default function AdminPage() {
   const [msg, setMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [refreshLog, setRefreshLog] = useState<string[] | null>(null)
+  const [sendingRecapId, setSendingRecapId] = useState<number | null>(null)
+  const [recapSentMsg, setRecapSentMsg] = useState<{ [id: number]: string }>({})
 
   // Assign pick form state
   const [assignParticipantId, setAssignParticipantId] = useState('')
@@ -288,6 +290,30 @@ export default function AdminPage() {
     }
 
     setSaving(null)
+  }
+
+  async function handleSendRecap(id: number) {
+    if (!window.confirm('Send this recap to all paid participants via email?')) return
+    setSendingRecapId(id)
+    try {
+      const res = await fetch('/api/send-recap', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.REACT_APP_CRON_SECRET || ''}`,
+        },
+        body: JSON.stringify({ recap_id: id }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setRecapSentMsg(prev => ({ ...prev, [id]: `Sent to ${data.sent} participants ✓` }))
+      } else {
+        setRecapSentMsg(prev => ({ ...prev, [id]: `Error: ${data.error || 'Unknown error'}` }))
+      }
+    } catch (err: any) {
+      setRecapSentMsg(prev => ({ ...prev, [id]: 'Network error — is /api/send-recap deployed?' }))
+    }
+    setSendingRecapId(null)
   }
 
   async function handleDeleteRecap(id: number) {
@@ -587,12 +613,26 @@ export default function AdminPage() {
                       <div className="recap-admin-title">{recap.title}</div>
                       <div className="recap-admin-preview">{recap.body ? recap.body.slice(0, 100) + '...' : '(preview not available)'}</div>
                     </div>
-                    <button
-                      className="action-btn btn-danger"
-                      onClick={() => handleDeleteRecap(recap.id)}
-                    >
-                      Delete
-                    </button>
+                    <div className="recap-admin-actions">
+                      {recapSentMsg[recap.id] && (
+                        <div className={`recap-sent-msg ${recapSentMsg[recap.id].startsWith('Error') || recapSentMsg[recap.id].startsWith('Network') ? 'recap-sent-error' : 'recap-sent-ok'}`}>
+                          {recapSentMsg[recap.id]}
+                        </div>
+                      )}
+                      <button
+                        className="action-btn btn-email"
+                        onClick={() => handleSendRecap(recap.id)}
+                        disabled={sendingRecapId === recap.id}
+                      >
+                        {sendingRecapId === recap.id ? '📧 Sending...' : '📧 Send Email'}
+                      </button>
+                      <button
+                        className="action-btn btn-danger"
+                        onClick={() => handleDeleteRecap(recap.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

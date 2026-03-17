@@ -3,6 +3,14 @@
     {
       "path": "/api/update-results",
       "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/send-morning-reminder",
+      "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/send-tipoff-reminder",
+      "schedule": "*/30 11-22 * * *"
     }
   ]
 }

@@ -3,6 +3,7 @@
 // Body: { email, team_ids: number[], game_date, clear_first?: boolean }
 
 const { createClient } = require('@supabase/supabase-js')
+const { Resend } = require('resend')
 
 const supabase = createClient(
   process.env.REACT_APP_SUPABASE_URL,
@@ -151,6 +152,36 @@ module.exports = async (req, res) => {
       })
     }
 
+    // ── 7. Send pick confirmation email (non-blocking) ───
+    try {
+      const resend = new Resend(process.env.RESEND_API_KEY)
+      const { data: participantWithEmail } = await supabase
+        .from('participants')
+        .select('email')
+        .eq('id', participant.id)
+        .single()
+
+      if (participantWithEmail?.email) {
+        const dateLabel = new Date(game_date + 'T12:00:00').toLocaleDateString('en-US', {
+          weekday: 'long', month: 'long', day: 'numeric'
+        })
+        await resend.emails.send({
+          from: 'Adams Survivor Pool <noreply@adamssurvivorpool.com>',
+          to: participantWithEmail.email,
+          subject: `✅ Pick confirmed — ${teamsData.map(t => t.name).join(' & ')}`,
+          html: pickConfirmationHtml(
+            participant.full_name,
+            teamsData,
+            day.round_name,
+            dateLabel
+          ),
+        })
+      }
+    } catch (emailErr) {
+      // Email failure never blocks the pick submission
+      console.error('Confirmation email failed:', emailErr.message)
+    }
+
     return res.status(200).json({
       success: true,
       participant_name: participant.full_name,
@@ -163,4 +194,36 @@ module.exports = async (req, res) => {
     console.error('submit-pick error:', err)
     return res.status(500).json({ error: 'server_error', message: 'Something went wrong. Please try again.' })
   }
+}
+
+function pickConfirmationHtml(name, teams, roundName, dateLabel) {
+  const teamRows = teams.map(t =>
+    `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);border-radius:8px;margin-bottom:8px;">
+      <span style="background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);font-size:11px;font-weight:700;padding:3px 7px;border-radius:4px;">#${t.seed}</span>
+      <span style="color:#fff;font-size:15px;font-weight:600;">${t.name}</span>
+      <span style="margin-left:auto;color:#4ade80;font-size:14px;">✓</span>
+    </div>`
+  ).join('')
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0a0e1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif;">
+<div style="max-width:480px;margin:0 auto;padding:32px 20px;">
+  <div style="text-align:center;margin-bottom:28px;">
+    <div style="font-size:40px;margin-bottom:8px;">✅</div>
+    <h1 style="color:#fff;font-size:20px;font-weight:700;margin:0;letter-spacing:-0.02em;">Adams Survivor Pool</h1>
+  </div>
+  <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px;">
+    <p style="color:#fff;font-size:16px;font-weight:600;margin:0 0 6px;">Hey ${name},</p>
+    <p style="color:rgba(255,255,255,0.6);font-size:13px;margin:0 0 20px;">${roundName} · ${dateLabel}</p>
+    <p style="color:rgba(255,255,255,0.75);font-size:15px;margin:0 0 16px;">Your ${teams.length > 1 ? 'picks are' : 'pick is'} locked in:</p>
+    ${teamRows}
+    <p style="color:rgba(255,255,255,0.5);font-size:13px;margin:20px 0 0;line-height:1.6;">Good luck! Results will be updated after games complete.</p>
+  </div>
+  <p style="text-align:center;color:rgba(255,255,255,0.2);font-size:12px;margin-top:20px;">
+    Adams Survivor Pool · <a href="https://adamssurvivorpool.com" style="color:rgba(255,255,255,0.3);">adamssurvivorpool.com</a>
+  </p>
+</div>
+</body></html>`
 }
