@@ -512,7 +512,7 @@ export default function DashboardPage() {
 
           {/* LEGO — Upcoming Games */}
           <div className="lego-card">
-            <div className="lego-label">🏀 Today's Games</div>
+            <div className="lego-label">🏀 Scoreboard</div>
 
             {scoresLoading && mergedGames.length === 0 ? (
               <div className="scores-loading">Loading games…</div>
