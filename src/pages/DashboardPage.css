@@ -306,9 +306,33 @@
   .hq-stat-num { font-size: 22px; }
 }
 @media (max-width: 600px) {
-  .lego-card { padding: 16px; }
-  .picks-header-row, .pick-row { grid-template-columns: 80px 1fr 44px 70px; }
-  .hq-stats-row { gap: 0; }
-  .hq-stat { padding: 4px; }
-  .hq-stat-num { font-size: 18px; }
+  /* Cards */
+  .lego-card { padding: 14px 12px; min-width: 0; }
+
+  /* Stats row — shrink so all 4 fit without wrapping */
+  .hq-stats-row { gap: 0; flex-wrap: nowrap; }
+  .hq-stat { padding: 4px 2px; min-width: 0; }
+  .hq-stat-num { font-size: 16px; }
+  .hq-stat-label { font-size: 9px; letter-spacing: 0.03em; }
+  .hq-stat-divider { height: 32px; }
+
+  /* Your status row — stack vertically */
+  .your-status-row { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .your-status-stats { gap: 16px; }
+
+  /* Today section — stack deadline below round/date */
+  .today-header { flex-direction: column; gap: 6px; }
+  .today-deadline { text-align: left; }
+  .deadline-time { font-size: 12px; }
+
+  /* Picks needed — stack button below text, full width */
+  .picks-needed { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .btn-picks { width: 100%; text-align: center; box-sizing: border-box; }
+
+  /* Pick history table — 3 columns (drop Seed) */
+  .picks-header-row,
+  .pick-row { grid-template-columns: 72px 1fr 64px; }
+  .picks-header-row span:nth-child(3),
+  .pick-row .pick-seed { display: none; }
+  .pick-result { font-size: 11px; }
 }

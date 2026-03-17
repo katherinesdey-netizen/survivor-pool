@@ -172,6 +172,9 @@ body {
   width: 100%;
   margin: 0 auto;
   padding: 32px 24px;
+  /* Prevent any child from causing horizontal scroll */
+  overflow-x: hidden;
+  min-width: 0;
 }
 
 .loading-screen {
