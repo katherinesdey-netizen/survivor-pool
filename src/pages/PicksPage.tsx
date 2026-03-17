@@ -259,6 +259,12 @@ export default function PicksPage() {
           const isActive = selectedDay?.game_date === day.game_date
           const hasPicks = existingPicks.some(p => p.game_date === day.game_date)
           const isPast   = new Date() > new Date(day.deadline)
+          // When multiple days share the same round name, append the weekday to distinguish
+          const isDuplicate = allDays.filter(d => d.round_name === day.round_name).length > 1
+          const weekday = isDuplicate
+            ? new Date(day.game_date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' })
+            : null
+          const pillLabel = weekday ? `${day.round_name} · ${weekday}` : day.round_name
           return (
             <button
               key={day.game_date}
@@ -272,7 +278,7 @@ export default function PicksPage() {
               disabled={!unlocked}
               title={unlocked ? day.round_name : "Unlocks after the previous day's games close"}
             >
-              <span className="day-pill-name">{day.round_name}</span>
+              <span className="day-pill-name">{pillLabel}</span>
               {hasPicks && unlocked && <span className="day-pill-dot" title="Picks submitted" />}
               {!unlocked && <span className="day-pill-lock">🔒</span>}
             </button>
