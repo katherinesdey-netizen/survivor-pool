@@ -60,7 +60,7 @@ export default function PicksPage() {
 
   useEffect(() => {
     if (authLoading) return
-    if (!participant) { setLoading(false); return }
+    if (!participant) return  // keep spinner — ProtectedRoute will redirect if truly unauthenticated
     fetchData()
     // eslint-disable-next-line
   }, [participant, authLoading])

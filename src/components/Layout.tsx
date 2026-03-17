@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import './Layout.css'
 
@@ -10,7 +10,11 @@ export default function Layout() {
 
   async function handleSignOut() {
     setMenuOpen(false)
-    await signOut()
+    try {
+      await signOut()
+    } catch {
+      // ignore — clear local state regardless
+    }
     navigate('/login')
   }
 
@@ -20,9 +24,9 @@ export default function Layout() {
     <div className="app-shell">
       <header className="app-header">
         <div className="header-inner">
-          <div className="header-brand">
+          <Link to="/dashboard" className="header-brand">
             <img src="/logo.png" alt="March Madness Survivor Pool" className="brand-logo" />
-          </div>
+          </Link>
 
           {/* Desktop nav */}
           <nav className="header-nav desktop-nav">
