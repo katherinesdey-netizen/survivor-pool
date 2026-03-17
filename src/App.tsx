@@ -14,7 +14,7 @@ import Layout from './components/Layout'
 import ScrollToTop from './components/ScrollToTop'
 
 // Public paths that don't require authentication
-const PUBLIC_PATHS = ['/standings', '/pick']
+const PUBLIC_PATHS = ['/standings', '/pick', '/rules']
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()

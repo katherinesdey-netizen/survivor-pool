@@ -41,8 +41,8 @@
 }
 
 .login-logo {
-  width: 100px;
-  height: 100px;
+  width: 200px;
+  height: 200px;
   object-fit: contain;
   margin-bottom: 12px;
   border-radius: 16px;
@@ -75,6 +75,57 @@
   font-size: 14px;
   line-height: 1.6;
   text-align: center;
+}
+
+.welcome-blurb {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 16px 18px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: rgba(255,255,255,0.7);
+  margin-bottom: 4px;
+}
+
+.welcome-blurb p {
+  margin: 0 0 10px;
+}
+
+.welcome-blurb p:last-child {
+  margin-bottom: 0;
+}
+
+.welcome-blurb strong {
+  color: #fff;
+}
+
+.welcome-options {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px 0;
+}
+
+.welcome-options li {
+  padding: 3px 0 3px 16px;
+  position: relative;
+}
+
+.welcome-options li::before {
+  content: '•';
+  position: absolute;
+  left: 4px;
+  color: #ff6b00;
+}
+
+.rules-link {
+  color: #ff6b00;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.rules-link:hover {
+  color: #ff8c38;
 }
 
 .field {
