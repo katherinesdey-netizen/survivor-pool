@@ -144,6 +144,15 @@ export default function LoginPage() {
 
         {step === 'login' && (
           <form onSubmit={handleLogin} className="login-form">
+            <div className="welcome-blurb">
+              <p>Welcome to my <strong>10th Annual 2026 NCAA Survivor Pool</strong>.</p>
+              <p>For the 10th anniversary of the pool, the team at Adam's Pools, LLC 😂 built a brand new app to run everything. You have two options to get started:</p>
+              <ul className="welcome-options">
+                <li><strong>Create an account</strong> (recommended)</li>
+                <li>Make picks without a password</li>
+              </ul>
+              <p>The rules remain the same as previous years — <Link to="/rules" className="rules-link">view the rules here</Link>.</p>
+            </div>
             <div className="field">
               <label>Email address</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)}
