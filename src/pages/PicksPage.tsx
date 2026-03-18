@@ -186,34 +186,41 @@ export default function PicksPage() {
       return
     }
     setSaving(true); setMsg(null)
-    await supabase.from('picks').delete().eq('participant_id', participant.id).eq('game_date', selectedDay.game_date)
-    const { error } = await supabase.from('picks').insert(
-      selectedIds.map(tid => ({
-        participant_id: participant.id, team_id: tid,
-        game_date: selectedDay.game_date, result: 'pending',
-      }))
-    )
-    if (error) {
-      setMsg({ type:'error', text:'Save failed. Please try again.' })
-    } else {
-      setSavedIds([...selectedIds])
-      setMsg({ type:'success', text:'✅ Picks saved! You can update them before the deadline.' })
-      const { data: fresh } = await supabase
-        .from('picks').select('id,team_id,game_date').eq('participant_id', participant.id)
-      setExistingPicks(fresh || [])
+    try {
+      await supabase.from('picks').delete().eq('participant_id', participant.id).eq('game_date', selectedDay.game_date)
+      const { error } = await supabase.from('picks').insert(
+        selectedIds.map(tid => ({
+          participant_id: participant.id, team_id: tid,
+          game_date: selectedDay.game_date, result: 'pending',
+        }))
+      )
+      if (error) {
+        console.error('picks insert error:', error)
+        setMsg({ type:'error', text:'Save failed. Please try again.' })
+      } else {
+        setSavedIds([...selectedIds])
+        setMsg({ type:'success', text:'✅ Picks saved! You can update them before the deadline.' })
+        const { data: fresh } = await supabase
+          .from('picks').select('id,team_id,game_date').eq('participant_id', participant.id)
+        setExistingPicks(fresh || [])
 
-      // Send pick confirmation email (non-blocking — failure doesn't affect UX)
-      fetch('/api/send-pick-confirmation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          participant_id: participant.id,
-          team_ids: selectedIds,
-          game_date: selectedDay.game_date,
-        }),
-      }).catch(() => { /* email failure is silent */ })
+        // Send pick confirmation email (non-blocking — failure doesn't affect UX)
+        fetch('/api/send-pick-confirmation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            participant_id: participant.id,
+            team_ids: selectedIds,
+            game_date: selectedDay.game_date,
+          }),
+        }).catch(() => { /* email failure is silent */ })
+      }
+    } catch (e) {
+      console.error('handleSave exception:', e)
+      setMsg({ type:'error', text:'Save failed. Please try again.' })
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
   }
 
   const byRegionSeed: Record<string, Record<number, Team>> = {}
