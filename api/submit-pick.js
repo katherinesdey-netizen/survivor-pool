@@ -212,7 +212,7 @@ function pickConfirmationHtml(name, teams, roundName, dateLabel) {
 <div style="max-width:480px;margin:0 auto;padding:32px 20px;">
   <div style="text-align:center;margin-bottom:28px;">
     <div style="font-size:40px;margin-bottom:8px;">✅</div>
-    <h1 style="color:#fff;font-size:20px;font-weight:700;margin:0;letter-spacing:-0.02em;">Adams Survivor Pool</h1>
+    <h1 style="color:#fff;font-size:20px;font-weight:700;margin:0;letter-spacing:-0.02em;">Adam's Survivor Pool</h1>
   </div>
   <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px;">
     <p style="color:#fff;font-size:16px;font-weight:600;margin:0 0 6px;">Hey ${name},</p>
@@ -222,7 +222,7 @@ function pickConfirmationHtml(name, teams, roundName, dateLabel) {
     <p style="color:rgba(255,255,255,0.5);font-size:13px;margin:20px 0 0;line-height:1.6;">Good luck! Results will be updated after games complete.</p>
   </div>
   <p style="text-align:center;color:rgba(255,255,255,0.2);font-size:12px;margin-top:20px;">
-    Adams Survivor Pool · <a href="https://adamssurvivorpool.com" style="color:rgba(255,255,255,0.3);">adamssurvivorpool.com</a>
+    Adam's Survivor Pool · <a href="https://adamssurvivorpool.com" style="color:rgba(255,255,255,0.3);">adamssurvivorpool.com</a>
   </p>
 </div>
 </body></html>`

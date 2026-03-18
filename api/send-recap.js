@@ -43,8 +43,8 @@ module.exports = async (req, res) => {
     })
 
     const subject = test_email
-      ? `[TEST] 📊 ${recap.title} — Adams Survivor Pool`
-      : `📊 ${recap.title} — Adams Survivor Pool`
+      ? `[TEST] 📊 ${recap.title} — Adam's Survivor Pool`
+      : `📊 ${recap.title} — Adam's Survivor Pool`
     const html = recapHtml(recap.title, recap.body, dateLabel)
 
     // Test mode: send only to the provided address
@@ -150,7 +150,7 @@ function recapHtml(title, body, dateLabel) {
 <div style="max-width:560px;margin:0 auto;padding:32px 20px;">
   <div style="text-align:center;margin-bottom:28px;">
     <div style="font-size:40px;margin-bottom:8px;">🏀</div>
-    <h1 style="color:#fff;font-size:20px;font-weight:700;margin:0 0 4px;letter-spacing:-0.02em;">Adams Survivor Pool</h1>
+    <h1 style="color:#fff;font-size:20px;font-weight:700;margin:0 0 4px;letter-spacing:-0.02em;">Adam's Survivor Pool</h1>
     <div style="font-size:13px;color:rgba(255,255,255,0.4);">${dateLabel}</div>
   </div>
   <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px;">
@@ -164,7 +164,7 @@ function recapHtml(title, body, dateLabel) {
     </div>
   </div>
   <p style="text-align:center;color:rgba(255,255,255,0.2);font-size:12px;margin-top:20px;">
-    Adams Survivor Pool · <a href="https://adamssurvivorpool.com" style="color:rgba(255,255,255,0.3);">adamssurvivorpool.com</a>
+    Adam's Survivor Pool · <a href="https://adamssurvivorpool.com" style="color:rgba(255,255,255,0.3);">adamssurvivorpool.com</a>
   </p>
 </div>
 </body></html>`
