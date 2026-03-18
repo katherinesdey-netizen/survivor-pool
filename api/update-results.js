@@ -88,7 +88,9 @@ async function processResults() {
     }
 
     // 2. For each completed game, update picks
-    const today = new Date().toISOString().split('T')[0]
+    // Use Eastern time so late-night games (finishing after midnight UTC) still
+    // match picks stored under the correct tournament date
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
     let picksUpdated = 0
 
     for (const game of completedGames) {
