@@ -67,20 +67,24 @@ module.exports = async (req, res) => {
     if (!participants || participants.length === 0)
       return res.status(200).json({ message: 'No paid participants found.', sent: 0 })
 
-    // Send in batches of 50 to stay within rate limits
-    const batchSize = 50
+    // Use Resend batch API — one email object per person so each recipient
+    // gets their own email (not a group send where everyone sees each other).
+    // Resend batch.send() supports up to 100 per call.
+    const batchSize = 100
     let sentCount = 0
 
     for (let i = 0; i < participants.length; i += batchSize) {
-      const batch = participants.slice(i, i + batchSize)
+      const chunk = participants.slice(i, i + batchSize)
       try {
-        await resend.emails.send({
-          from: 'Adam Furtado <adam@adamssurvivorpool.com>',
-          to: batch.map(p => p.email),
-          subject,
-          html,
-        })
-        sentCount += batch.length
+        await resend.batch.send(
+          chunk.map(p => ({
+            from: 'Adam Furtado <adam@adamssurvivorpool.com>',
+            to: [p.email],
+            subject,
+            html,
+          }))
+        )
+        sentCount += chunk.length
       } catch (batchErr) {
         console.error(`Batch ${i}–${i + batchSize} failed:`, batchErr.message)
       }
