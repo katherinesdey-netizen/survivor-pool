@@ -133,7 +133,7 @@ export default function DashboardPage() {
   useEffect(() => { fetchDataRef.current   = fetchData   })
   useEffect(() => { fetchScoresRef.current = fetchScores })
 
-  // Re-fetch when the browser tab becomes visible (avoids stale/empty data after token refresh)
+  // Re-fetch when the browser tab becomes visible or is restored from bfcache
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
@@ -141,8 +141,20 @@ export default function DashboardPage() {
         fetchScoresRef.current()
       }
     }
+    // pageshow fires when restoring from back-forward cache (bfcache),
+    // which doesn't always trigger visibilitychange
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        fetchDataRef.current()
+        fetchScoresRef.current()
+      }
+    }
     document.addEventListener('visibilitychange', onVisible)
-    return () => document.removeEventListener('visibilitychange', onVisible)
+    window.addEventListener('pageshow', onPageShow)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('pageshow', onPageShow)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -160,6 +172,9 @@ export default function DashboardPage() {
 
   async function fetchData() {
     if (!participant) return  // guard for visibilitychange calls before auth is ready
+    // Refresh the session token before querying — prevents empty results when
+    // the JWT has expired while the tab was in the background
+    await supabase.auth.getSession()
     setLoading(true)
     const giveUp = setTimeout(() => setLoading(false), 8000)
     try {

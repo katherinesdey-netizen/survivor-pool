@@ -75,18 +75,28 @@ export default function PicksPage() {
   // Keep ref current after every render
   useEffect(() => { fetchDataRef.current = fetchData })
 
-  // Re-fetch when the browser tab becomes visible (avoids stale/empty data after token refresh)
+  // Re-fetch when the browser tab becomes visible or is restored from bfcache
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState === 'visible') fetchDataRef.current()
     }
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) fetchDataRef.current()
+    }
     document.addEventListener('visibilitychange', onVisible)
-    return () => document.removeEventListener('visibilitychange', onVisible)
+    window.addEventListener('pageshow', onPageShow)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('pageshow', onPageShow)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function fetchData() {
     if (!participant) return  // guard for visibilitychange calls before auth is ready
+    // Refresh the session token before querying — prevents empty results when
+    // the JWT has expired while the tab was in the background
+    await supabase.auth.getSession()
     setLoading(true)
     const giveUp = setTimeout(() => setLoading(false), 8000)
     try {
