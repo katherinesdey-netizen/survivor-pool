@@ -236,6 +236,14 @@ export default function PicksPage() {
         <div>
           <h1 className="picks-page-title">My Picks</h1>
           {selectedDay && <div className="picks-round">{selectedDay.round_name}</div>}
+          <a
+            href="https://www.espn.com/mens-college-basketball/tournament/bracket"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bracket-ext-link"
+          >
+            📋 View Official Bracket ↗
+          </a>
         </div>
         {selectedDay && (
           <div className="picks-deadline-box">

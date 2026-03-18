@@ -8,6 +8,13 @@
   border-radius: 16px; padding: 20px 24px;
 }
 .picks-round { font-size: 14px; color: rgba(255,255,255,0.5); }
+.bracket-ext-link {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-top: 8px; font-size: 13px; font-weight: 500;
+  color: rgba(255,255,255,0.45); text-decoration: none;
+  transition: color 0.15s;
+}
+.bracket-ext-link:hover { color: rgba(255,255,255,0.85); }
 .picks-deadline-box { text-align: right; }
 .deadline-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.35); margin-bottom: 4px; }
 .deadline-value { font-size: 13px; color: rgba(255,255,255,0.8); font-weight: 500; }
