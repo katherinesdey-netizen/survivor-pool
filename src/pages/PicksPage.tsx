@@ -191,6 +191,17 @@ export default function PicksPage() {
       const { data: fresh } = await supabase
         .from('picks').select('id,team_id,game_date').eq('participant_id', participant.id)
       setExistingPicks(fresh || [])
+
+      // Send pick confirmation email (non-blocking — failure doesn't affect UX)
+      fetch('/api/send-pick-confirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          participant_id: participant.id,
+          team_ids: selectedIds,
+          game_date: selectedDay.game_date,
+        }),
+      }).catch(() => { /* email failure is silent */ })
     }
     setSaving(false)
   }
