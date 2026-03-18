@@ -110,6 +110,10 @@ export default function DashboardPage() {
   // Map of game_date → deadline string, used to gate pick count display
   const [dayDeadlines, setDayDeadlines] = useState<Record<string, string>>({})
 
+  // Always-current refs so the visibilitychange handler calls the latest fetchData/fetchScores
+  const fetchDataRef   = useRef(fetchData)
+  const fetchScoresRef = useRef(fetchScores)
+
   useEffect(() => {
     if (authLoading) return
     if (!participant) return  // keep spinner — ProtectedRoute will redirect if truly unauthenticated
@@ -122,6 +126,23 @@ export default function DashboardPage() {
     fetchScores()
     const iv = setInterval(fetchScores, 30000)
     return () => clearInterval(iv)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Keep refs current after every render
+  useEffect(() => { fetchDataRef.current   = fetchData   })
+  useEffect(() => { fetchScoresRef.current = fetchScores })
+
+  // Re-fetch when the browser tab becomes visible (avoids stale/empty data after token refresh)
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        fetchDataRef.current()
+        fetchScoresRef.current()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -138,6 +159,7 @@ export default function DashboardPage() {
   }
 
   async function fetchData() {
+    if (!participant) return  // guard for visibilitychange calls before auth is ready
     setLoading(true)
     const giveUp = setTimeout(() => setLoading(false), 8000)
     try {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import './PicksPage.css'
@@ -45,8 +45,12 @@ function isDayUnlocked(days: TournamentDay[], index: number): boolean {
   return new Date() >= new Date(days[index - 1].deadline)
 }
 
+// Option 3 preview — swap in a real bracket image URL once available
+const BRACKET_IMAGE_URL = 'https://www.ncaa.com/sites/default/files/public/styles/original/public-s3/images/2025/03/16/2025-NCAA-tournament-bracket.png'
+
 export default function PicksPage() {
   const { participant, loading: authLoading } = useAuth()
+  const [bracketOpen, setBracketOpen]         = useState(false)
   const [teams, setTeams]                   = useState<Team[]>([])
   const [games, setGames]                   = useState<Game[]>([])
   const [allDays, setAllDays]               = useState<TournamentDay[]>([])
@@ -58,6 +62,9 @@ export default function PicksPage() {
   const [saving, setSaving]                 = useState(false)
   const [msg, setMsg]                       = useState<{type:'success'|'error', text:string}|null>(null)
 
+  // Always-current ref so the visibilitychange handler calls the latest fetchData
+  const fetchDataRef = useRef(fetchData)
+
   useEffect(() => {
     if (authLoading) return
     if (!participant) return  // keep spinner — ProtectedRoute will redirect if truly unauthenticated
@@ -65,7 +72,21 @@ export default function PicksPage() {
     // eslint-disable-next-line
   }, [participant, authLoading])
 
+  // Keep ref current after every render
+  useEffect(() => { fetchDataRef.current = fetchData })
+
+  // Re-fetch when the browser tab becomes visible (avoids stale/empty data after token refresh)
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') fetchDataRef.current()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   async function fetchData() {
+    if (!participant) return  // guard for visibilitychange calls before auth is ready
     setLoading(true)
     const giveUp = setTimeout(() => setLoading(false), 8000)
     try {
@@ -236,14 +257,19 @@ export default function PicksPage() {
         <div>
           <h1 className="picks-page-title">My Picks</h1>
           {selectedDay && <div className="picks-round">{selectedDay.round_name}</div>}
-          <a
-            href="https://www.espn.com/mens-college-basketball/tournament/bracket"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bracket-ext-link"
-          >
-            📋 View Official Bracket ↗
-          </a>
+          <div className="bracket-links-row">
+            <a
+              href="https://www.espn.com/mens-college-basketball/tournament/bracket"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bracket-ext-link"
+            >
+              📋 View on ESPN ↗
+            </a>
+            <button className="bracket-lightbox-btn" onClick={() => setBracketOpen(true)}>
+              🔍 View Bracket Here
+            </button>
+          </div>
         </div>
         {selectedDay && (
           <div className="picks-deadline-box">
@@ -364,6 +390,35 @@ export default function PicksPage() {
           </div>
         ))}
       </div>
+
+      {/* Option 3 preview — bracket lightbox */}
+      {bracketOpen && (
+        <div className="bracket-overlay" onClick={() => setBracketOpen(false)}>
+          <div className="bracket-modal" onClick={e => e.stopPropagation()}>
+            <div className="bracket-modal-header">
+              <span className="bracket-modal-title">📋 Official Bracket</span>
+              <button className="bracket-modal-close" onClick={() => setBracketOpen(false)}>✕</button>
+            </div>
+            <div className="bracket-modal-body">
+              <img
+                src={BRACKET_IMAGE_URL}
+                alt="NCAA Tournament Bracket"
+                className="bracket-modal-img"
+              />
+            </div>
+            <div className="bracket-modal-footer">
+              <a
+                href="https://www.espn.com/mens-college-basketball/tournament/bracket"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bracket-modal-espn"
+              >
+                Open full bracket on ESPN ↗
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )
