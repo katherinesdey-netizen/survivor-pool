@@ -61,10 +61,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function signOut() {
-    await supabase.auth.signOut()
-    setUser(null)
-    setSession(null)
-    setParticipant(null)
+    try {
+      await supabase.auth.signOut()
+    } catch {
+      // ignore network errors — always clear local state
+    } finally {
+      setUser(null)
+      setSession(null)
+      setParticipant(null)
+    }
   }
 
   useEffect(() => {
