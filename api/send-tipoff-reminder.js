@@ -97,7 +97,7 @@ module.exports = async (req, res) => {
     for (const p of unpicked) {
       try {
         await resend.emails.send({
-          from: 'Adams Survivor Pool <noreply@adamssurvivorpool.com>',
+          from: 'Adam Furtado <adam@adamssurvivorpool.com>',
           to: p.email,
           subject: `⏰ First game tips off in ~1 hour — submit your pick!`,
           html: tipoffReminderHtml(p.full_name, day.round_name, deadlineStr, tipStr, day.picks_required),

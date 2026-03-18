@@ -195,7 +195,7 @@ async function processResults() {
             if (!p.email) continue
             const losingTeam = pickByParticipant[p.id]
             await resend.emails.send({
-              from: 'Adams Survivor Pool <noreply@adamssurvivorpool.com>',
+              from: 'Adam Furtado <adam@adamssurvivorpool.com>',
               to: p.email,
               subject: `☠️ You've been eliminated — Adams Survivor Pool`,
               html: eliminationHtml(p.full_name, losingTeam, dateLabel),

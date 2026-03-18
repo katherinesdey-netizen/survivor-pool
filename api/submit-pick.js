@@ -166,7 +166,7 @@ module.exports = async (req, res) => {
           weekday: 'long', month: 'long', day: 'numeric'
         })
         await resend.emails.send({
-          from: 'Adams Survivor Pool <noreply@adamssurvivorpool.com>',
+          from: 'Adam Furtado <adam@adamssurvivorpool.com>',
           to: participantWithEmail.email,
           subject: `✅ Pick confirmed — ${teamsData.map(t => t.name).join(' & ')}`,
           html: pickConfirmationHtml(

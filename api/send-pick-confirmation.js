@@ -55,7 +55,7 @@ module.exports = async (req, res) => {
 
     const resend = new Resend(process.env.RESEND_API_KEY)
     await resend.emails.send({
-      from: 'Adams Survivor Pool <noreply@adamssurvivorpool.com>',
+      from: 'Adam Furtado <adam@adamssurvivorpool.com>',
       to: participant.email,
       subject: `✅ Pick confirmed — ${teams.map(t => t.name).join(' & ')}`,
       html: pickConfirmationHtml(participant.full_name, teams, roundName, dateLabel),

@@ -71,7 +71,7 @@ module.exports = async (req, res) => {
     for (const p of unpicked) {
       try {
         await resend.emails.send({
-          from: 'Adams Survivor Pool <noreply@adamssurvivorpool.com>',
+          from: 'Adam Furtado <adam@adamssurvivorpool.com>',
           to: p.email,
           subject: `🏀 Don't forget your pick — ${day.round_name}`,
           html: morningReminderHtml(p.full_name, day.round_name, deadlineStr, day.picks_required),
