@@ -21,6 +21,7 @@ async function fetchESPNScores() {
 }
 
 // Extract completed games with winner/loser from ESPN data
+// Captures ESPN's numeric team ID for exact DB matching
 function parseCompletedGames(events) {
   const results = []
 
@@ -38,6 +39,8 @@ function parseCompletedGames(events) {
     results.push({
       winnerName: winner.team.displayName,
       loserName: loser.team.displayName,
+      winnerId: parseInt(winner.team.id, 10),
+      loserId: parseInt(loser.team.id, 10),
       gameDate: event.date?.split('T')[0]
     })
   }
@@ -45,46 +48,26 @@ function parseCompletedGames(events) {
   return results
 }
 
-// Normalize team name for fuzzy matching
-// ESPN uses full names like "Duke Blue Devils", our DB might have "Duke"
-function normalize(name) {
-  return name
-    .toLowerCase()
-    .replace(/\b(blue devils|tar heels|wolfpack|wildcats|hoyas|bulldogs|cardinals|tigers|bears|eagles|hawks|lions|panthers|rams|rebels|scarlet knights|aggies|longhorns|volunteers|gators|hurricanes|seminoles|orange|golden eagles|flyers|owls|friars|hilltoppers|retrievers|explorers|patriots|colonials|seawolves|ducks|beavers|bruins|trojans|sun devils|utes|cougars|mustangs|horned frogs|raiders|cowboys|jayhawks|cyclones|cornhuskers|hawkeyes|badgers|boilermakers|buckeyes|wolverines|spartans|nittany lions|terrapins|fighting illini|hoosiers|golden gophers|huskers)\b/g, '')
-    .replace(/\b(university|college|state|tech|a&m)\b/g, '')
-    .trim()
-    .replace(/\s+/g, ' ')
-}
+// Find a team in our DB by ESPN numeric ID (exact), falling back to name match
+async function findTeamByName(espnName, espnId) {
+  // Primary: exact match on espn_id column — always correct
+  if (espnId) {
+    const { data: byId } = await supabase
+      .from('teams')
+      .select('id, name')
+      .eq('espn_id', espnId)
+      .maybeSingle()
+    if (byId) return byId
+  }
 
-// Find a team in our DB by matching ESPN name
-async function findTeamByName(espnName) {
-  // First try exact match
+  // Fallback: case-insensitive name match
   const { data: exact } = await supabase
     .from('teams')
     .select('id, name')
     .ilike('name', espnName)
     .maybeSingle()
-  
-  if (exact) return exact
 
-  // Try normalized partial match
-  const normalized = normalize(espnName)
-  const { data: teams } = await supabase
-    .from('teams')
-    .select('id, name')
-    .eq('is_eliminated', false)
-
-  if (!teams) return null
-
-  // Find best match
-  const match = teams.find(t => {
-    const tNorm = normalize(t.name)
-    return tNorm === normalized || 
-           espnName.toLowerCase().includes(t.name.toLowerCase()) ||
-           t.name.toLowerCase().includes(normalized)
-  })
-
-  return match || null
+  return exact || null
 }
 
 // Main processing function
@@ -109,8 +92,8 @@ async function processResults() {
     let picksUpdated = 0
 
     for (const game of completedGames) {
-      const winnerTeam = await findTeamByName(game.winnerName)
-      const loserTeam = await findTeamByName(game.loserName)
+      const winnerTeam = await findTeamByName(game.winnerName, game.winnerId)
+      const loserTeam = await findTeamByName(game.loserName, game.loserId)
 
       log.push(`Game: ${game.winnerName} beat ${game.loserName}`)
       log.push(`  Matched: winner=${winnerTeam?.name || 'NOT FOUND'}, loser=${loserTeam?.name || 'NOT FOUND'}`)
