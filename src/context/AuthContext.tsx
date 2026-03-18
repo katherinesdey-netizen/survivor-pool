@@ -61,15 +61,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function signOut() {
-    try {
-      await supabase.auth.signOut()
-    } catch {
-      // ignore network errors — always clear local state
-    } finally {
-      setUser(null)
-      setSession(null)
-      setParticipant(null)
-    }
+    // Clear local state immediately so the UI responds instantly,
+    // even on slow/offline connections. Fire-and-forget the server call.
+    setUser(null)
+    setSession(null)
+    setParticipant(null)
+    supabase.auth.signOut().catch(() => {})
   }
 
   useEffect(() => {
