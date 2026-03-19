@@ -145,6 +145,9 @@ function tipoffReminderHtml(name, roundName, deadline, tipTime, picksRequired) {
        style="display:block;background:#ff6b00;color:#fff;text-decoration:none;text-align:center;padding:14px 20px;border-radius:10px;font-size:16px;font-weight:700;">
       Submit Your Pick Now →
     </a>
+    <p style="color:rgba(255,255,255,0.4);font-size:12px;margin:16px 0 0;line-height:1.6;text-align:center;">
+      Having trouble? Try doing a hard refresh — on phone, close and reopen the browser. On desktop, press Ctrl+Shift+R (Windows) or Cmd+Shift+R (Mac).
+    </p>
   </div>
   <p style="text-align:center;color:rgba(255,255,255,0.2);font-size:12px;margin-top:20px;">
     Adam's Survivor Pool · <a href="https://adamssurvivorpool.com" style="color:rgba(255,255,255,0.3);">adamssurvivorpool.com</a>
