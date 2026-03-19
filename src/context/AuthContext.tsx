@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: byEmail } = await supabase
       .from('participants')
       .select('*')
-      .eq('email', userEmail)
+      .ilike('email', userEmail)
       .single()
 
     if (!byEmail) { setParticipant(null); return }

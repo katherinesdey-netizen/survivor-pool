@@ -116,7 +116,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (authLoading) return
-    if (!participant) return  // keep spinner — ProtectedRoute will redirect if truly unauthenticated
+    if (!participant) { setLoading(false); return }
     fetchData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [participant, authLoading])
