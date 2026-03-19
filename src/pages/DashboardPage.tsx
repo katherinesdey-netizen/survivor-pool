@@ -279,7 +279,7 @@ export default function DashboardPage() {
       // 1. ESPN — parallel fetch per date
       const espnResults = await Promise.all(
         displayDates.map(d =>
-          fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=100&dates=${d.replace(/-/g, '')}`)
+          fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?dates=${d.replace(/-/g, '')}`)
             .then(r => r.json())
             .then(data => data.events || [])
             .catch(() => [])
