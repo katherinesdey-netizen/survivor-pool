@@ -32,21 +32,10 @@ module.exports = async (req, res) => {
     if (pErr) throw pErr
 
     if (!participant) {
-      // New email — if no name provided yet, ask the frontend for one
-      if (!name || !name.trim()) {
-        return res.status(200).json({ needs_name: true })
-      }
-
-      // Create the new participant (id has no default — generate a UUID)
-      const { randomUUID } = require('crypto')
-      const { data: created, error: createErr } = await supabase
-        .from('participants')
-        .insert({ id: randomUUID(), full_name: name.trim(), email: email.trim().toLowerCase(), is_paid: true, is_eliminated: false })
-        .select('id, full_name, is_paid, is_eliminated')
-        .single()
-
-      if (createErr) throw createErr
-      participant = created
+      return res.status(404).json({
+        error: 'not_found',
+        message: "We don't have that email on file. Check for typos or contact Adam."
+      })
     }
 
     if (!participant.is_paid) {
