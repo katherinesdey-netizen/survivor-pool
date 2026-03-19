@@ -162,8 +162,8 @@ export default function DashboardPage() {
   // Which dates to display in the games widget
   function getDisplayDates(): string[] {
     const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-    // Before Mar 20: always show First Four (Mar 18) + Round of 64 Thursday (Mar 19)
-    if (todayET <= '2026-03-19') return ['2026-03-18', '2026-03-19']
+    // Before Mar 20: show Round of 64 Thursday only
+    if (todayET <= '2026-03-19') return ['2026-03-19']
     // After that: show today if it's a tournament day, else next upcoming day
     const days = allDaysRef.current
     if (days.includes(todayET)) return [todayET]
