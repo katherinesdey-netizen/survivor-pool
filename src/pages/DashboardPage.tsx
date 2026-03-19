@@ -60,6 +60,7 @@ interface DbGame {
 interface EspnTeam {
   team: { displayName: string; shortDisplayName: string; abbreviation: string }
   curatedRank?: { current: number }
+  seed?: string
   score: string
   homeAway: string
   winner?: boolean
@@ -312,19 +313,22 @@ export default function DashboardPage() {
     }
   }
 
-  // Merge our DB games with ESPN live data
+  // Merge ESPN live data with DB games (for pick counts)
   function buildMergedGames() {
     function nameMatch(espnName: string, dbName: string): boolean {
       const a = (espnName || '').toLowerCase().trim()
       const b = (dbName || '').toLowerCase().trim()
       if (a === b) return true
-      // First-word match (e.g. "Duke" matches "Duke Blue Devils")
       const aFirst = a.split(' ')[0]
       const bFirst = b.split(' ')[0]
       return aFirst === bFirst || a.includes(bFirst) || b.includes(aFirst)
     }
 
-    type MergedGame = DbGame & {
+    type MergedGame = {
+      key: string
+      game_date: string
+      team1: { id: number; name: string; seed: number; region: string }
+      team2: { id: number; name: string; seed: number; region: string }
       startTime: Date
       network: string
       status: 'pre' | 'live' | 'final'
@@ -336,44 +340,74 @@ export default function DashboardPage() {
       winner2: boolean
     }
 
-    const merged: MergedGame[] = dbGames.map(dbGame => {
-      const base: MergedGame = {
-        ...dbGame,
-        startTime: new Date(dbGame.game_date + 'T23:59:00'),
-        network: '', status: 'pre', halfLabel: '', clock: '',
-        score1: '', score2: '', winner1: false, winner2: false,
+    const merged: MergedGame[] = espnGames.map(eg => {
+      const comp = eg.competitions[0]
+      const st = comp.status
+      const comps = comp.competitors
+      // ESPN competitor order: index 0 = away, index 1 = home (convention)
+      const espn1 = comps[0]
+      const espn2 = comps[1]
+
+      // Derive ET game date from ESPN timestamp
+      const gameDate = new Date(eg.date).toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+
+      // Try to match a DB game (needed only for pick counts and confirmed seeds)
+      const dbGame = dbGames.find(dg =>
+        comps.some(c => nameMatch(c.team.shortDisplayName || c.team.displayName, dg.team1.name)) &&
+        comps.some(c => nameMatch(c.team.shortDisplayName || c.team.displayName, dg.team2.name))
+      )
+
+      // Build team objects — DB preferred (has pick-count IDs), ESPN fallback
+      let team1: MergedGame['team1']
+      let team2: MergedGame['team2']
+      let c1 = espn1
+      let c2 = espn2
+
+      if (dbGame) {
+        team1 = dbGame.team1
+        team2 = dbGame.team2
+        // Re-align ESPN competitors to match DB team order
+        const match1 = comps.find(c => nameMatch(c.team.shortDisplayName || c.team.displayName, dbGame.team1.name))
+        const match2 = comps.find(c => nameMatch(c.team.shortDisplayName || c.team.displayName, dbGame.team2.name))
+        if (match1) c1 = match1
+        if (match2) c2 = match2
+      } else {
+        team1 = {
+          id: -(eg.id as any * 2),
+          name: espn1.team.shortDisplayName || espn1.team.displayName,
+          seed: parseInt(espn1.seed || '0') || espn1.curatedRank?.current || 0,
+          region: '',
+        }
+        team2 = {
+          id: -(eg.id as any * 2 + 1),
+          name: espn2.team.shortDisplayName || espn2.team.displayName,
+          seed: parseInt(espn2.seed || '0') || espn2.curatedRank?.current || 0,
+          region: '',
+        }
       }
 
-      // Find matching ESPN game by team name
-      const espnGame = espnGames.find(eg => {
-        const comps = eg.competitions[0].competitors
-        const t1matched = comps.some(c => nameMatch(c.team.shortDisplayName || c.team.displayName, dbGame.team1.name))
-        const t2matched = comps.some(c => nameMatch(c.team.shortDisplayName || c.team.displayName, dbGame.team2.name))
-        return t1matched && t2matched
-      })
-
-      if (!espnGame) return base
-
-      const comp = espnGame.competitions[0]
-      const st = comp.status
-      base.startTime = new Date(espnGame.date)
-      base.network = comp.broadcasts?.[0]?.media?.shortName || ''
-      if (st.type.completed) base.status = 'final'
-      else if (st.type.name === 'STATUS_IN_PROGRESS') base.status = 'live'
+      let status: 'pre' | 'live' | 'final' = 'pre'
+      if (st.type.completed) status = 'final'
+      else if (st.type.name === 'STATUS_IN_PROGRESS') status = 'live'
 
       const p = st.period
-      base.halfLabel = p === 1 ? '1st Half' : p === 2 ? '2nd Half' : p > 2 ? `OT${p - 2}` : ''
-      base.clock = st.displayClock
+      const halfLabel = p === 1 ? '1st Half' : p === 2 ? '2nd Half' : p > 2 ? `OT${p - 2}` : ''
 
-      const findComp = (dbName: string) =>
-        comp.competitors.find(c => nameMatch(c.team.shortDisplayName || c.team.displayName, dbName))
-
-      const c1 = findComp(dbGame.team1.name)
-      const c2 = findComp(dbGame.team2.name)
-      if (c1) { base.score1 = c1.score; base.winner1 = c1.winner || false }
-      if (c2) { base.score2 = c2.score; base.winner2 = c2.winner || false }
-
-      return base
+      return {
+        key: eg.id,
+        game_date: gameDate,
+        team1,
+        team2,
+        startTime: new Date(eg.date),
+        network: comp.broadcasts?.[0]?.media?.shortName || '',
+        status,
+        halfLabel,
+        clock: st.displayClock,
+        score1: c1.score,
+        score2: c2.score,
+        winner1: c1.winner || false,
+        winner2: c2.winner || false,
+      }
     })
 
     // Sort: non-finals by tip time, finals sink to bottom
@@ -586,7 +620,7 @@ export default function DashboardPage() {
                           { team: game.team2, score: game.score2, winner: game.winner2 },
                         ]
                         return (
-                          <div key={game.id} className={`game-card${isLive ? ' game-live' : isFinal ? ' game-final' : ''}`}>
+                          <div key={game.key} className={`game-card${isLive ? ' game-live' : isFinal ? ' game-final' : ''}`}>
                             <div className="game-header">
                               <div className="game-status-wrap">
                                 {isLive && <span className="live-dot" />}
