@@ -12,7 +12,7 @@ const supabase = createClient(
 // Fetch today's NCAA scores from ESPN's free API
 async function fetchESPNScores() {
   const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
-  const url = `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?dates=${today}&groups=100`
+  const url = `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?dates=${today}`
   
   const res = await fetch(url)
   if (!res.ok) throw new Error(`ESPN API error: ${res.status}`)

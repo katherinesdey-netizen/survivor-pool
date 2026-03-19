@@ -109,7 +109,10 @@ export default function AdminPage() {
     setRefreshing(true)
     setRefreshLog(null)
     try {
-      const res = await fetch('/api/update-results', { method: 'POST' })
+      const res = await fetch('/api/update-results', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${process.env.REACT_APP_CRON_SECRET || ''}` },
+      })
       const data = await res.json()
       setRefreshLog(data.log || [])
       if (data.success) {
