@@ -48,63 +48,85 @@ export default function RecapsPage() {
   }
 
   function renderBody(body: string) {
-    return body
-      .split('\n')
-      .map((line, i) => {
-        const trimmed = line.trim()
-
-        // YouTube URL on its own line → embedded player
-        const youtubeId = getYouTubeId(trimmed)
-        if (youtubeId && trimmed.match(/^https?:\/\//)) {
-          return (
-            <div key={i} className="recap-video-wrap">
-              <iframe
-                src={`https://www.youtube.com/embed/${youtubeId}`}
-                title="YouTube video"
-                className="recap-youtube"
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-          )
+    // Group consecutive HTML lines into blocks, then process remaining lines individually
+    const lines = body.split('\n')
+    const segments: Array<{ type: 'html'; html: string; key: number } | { type: 'line'; text: string; key: number }> = []
+    let i = 0
+    while (i < lines.length) {
+      const trimmed = lines[i].trim()
+      if (trimmed.startsWith('<')) {
+        // Collect all consecutive HTML lines into one block
+        const htmlLines: string[] = []
+        while (i < lines.length && lines[i].trim().startsWith('<')) {
+          htmlLines.push(lines[i])
+          i++
         }
+        segments.push({ type: 'html', html: htmlLines.join('\n'), key: segments.length })
+      } else {
+        segments.push({ type: 'line', text: lines[i], key: segments.length })
+        i++
+      }
+    }
 
-        // [img:URL] tag or bare image/GIF URL on its own line → render as image
-        const imgTagMatch = trimmed.match(/^\[img:(.+)\]$/)
-        const bareUrl = trimmed.match(/^https?:\/\/\S+$/)
-        const imgSrc = imgTagMatch ? imgTagMatch[1] : (bareUrl ? bareUrl[0] : null)
+    return segments.map(seg => {
+      if (seg.type === 'html') {
+        return <div key={seg.key} dangerouslySetInnerHTML={{ __html: seg.html }} />
+      }
 
-        if (imgSrc) {
-          return (
-            <div key={i} className="recap-image-wrap">
-              <img
-                src={imgSrc}
-                alt="Recap media"
-                className="recap-inline-image"
-                onError={e => {
-                  const wrap = (e.target as HTMLImageElement).parentElement
-                  if (wrap) wrap.style.display = 'none'
-                }}
-              />
-            </div>
-          )
-        }
+      const trimmed = seg.text.trim()
 
-        if (trimmed === '') return <br key={i} />
-
-        // Bold: **text**
-        const parts = line.split(/(\*\*[^*]+\*\*)/)
+      // YouTube URL on its own line → embedded player
+      const youtubeId = getYouTubeId(trimmed)
+      if (youtubeId && trimmed.match(/^https?:\/\//)) {
         return (
-          <p key={i}>
-            {parts.map((part, j) =>
-              part.startsWith('**') && part.endsWith('**')
-                ? <strong key={j}>{part.slice(2, -2)}</strong>
-                : part
-            )}
-          </p>
+          <div key={seg.key} className="recap-video-wrap">
+            <iframe
+              src={`https://www.youtube.com/embed/${youtubeId}`}
+              title="YouTube video"
+              className="recap-youtube"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
         )
-      })
+      }
+
+      // [img:URL] tag or bare image/GIF URL on its own line → render as image
+      const imgTagMatch = trimmed.match(/^\[img:(.+)\]$/)
+      const bareUrl = trimmed.match(/^https?:\/\/\S+$/)
+      const imgSrc = imgTagMatch ? imgTagMatch[1] : (bareUrl ? bareUrl[0] : null)
+
+      if (imgSrc) {
+        return (
+          <div key={seg.key} className="recap-image-wrap">
+            <img
+              src={imgSrc}
+              alt="Recap media"
+              className="recap-inline-image"
+              onError={e => {
+                const wrap = (e.target as HTMLImageElement).parentElement
+                if (wrap) wrap.style.display = 'none'
+              }}
+            />
+          </div>
+        )
+      }
+
+      if (trimmed === '') return <br key={seg.key} />
+
+      // Bold: **text**
+      const parts = seg.text.split(/(\*\*[^*]+\*\*)/)
+      return (
+        <p key={seg.key}>
+          {parts.map((part, j) =>
+            part.startsWith('**') && part.endsWith('**')
+              ? <strong key={j}>{part.slice(2, -2)}</strong>
+              : part
+          )}
+        </p>
+      )
+    })
   }
 
   if (loading) return <div className="loading-screen"><div className="spinner" /></div>
