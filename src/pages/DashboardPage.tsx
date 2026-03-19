@@ -388,11 +388,13 @@ export default function DashboardPage() {
       }
 
       let status: 'pre' | 'live' | 'final' = 'pre'
+      const PRE_STATUSES = ['STATUS_SCHEDULED', 'STATUS_PREGAME', 'STATUS_CANCELED', 'STATUS_POSTPONED', 'STATUS_SUSPENDED']
       if (st.type.completed) status = 'final'
-      else if (st.type.name === 'STATUS_IN_PROGRESS') status = 'live'
+      else if (!PRE_STATUSES.includes(st.type.name)) status = 'live'
 
       const p = st.period
-      const halfLabel = p === 1 ? '1st Half' : p === 2 ? '2nd Half' : p > 2 ? `OT${p - 2}` : ''
+      const halfLabel = st.type.name === 'STATUS_HALFTIME' ? 'Halftime'
+        : p === 1 ? '1st Half' : p === 2 ? '2nd Half' : p > 2 ? `OT${p - 2}` : ''
 
       return {
         key: eg.id,
@@ -629,7 +631,7 @@ export default function DashboardPage() {
                                   {isFinal
                                     ? 'Final'
                                     : isLive
-                                    ? `${game.halfLabel} · ${game.clock}`
+                                    ? (game.clock && game.clock !== '0:00' ? `${game.halfLabel} · ${game.clock}` : game.halfLabel)
                                     : fmtTipTime(game.startTime)}
                                 </span>
                               </div>
