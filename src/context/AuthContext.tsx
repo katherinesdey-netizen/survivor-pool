@@ -51,9 +51,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!byEmail) { setParticipant(null); return }
 
-    // Update placeholder UUID → real auth UUID (allowed by "Link pre-loaded participant" RLS policy)
-    await supabase.from('participants').update({ id: userId }).eq('email', userEmail)
-    setParticipant({ ...byEmail, id: userId })
+    // Update placeholder UUID → real auth UUID, and mark as paid (allowed by "Link pre-loaded participant" RLS policy)
+    await supabase.from('participants').update({ id: userId, is_paid: true }).ilike('email', userEmail)
+    setParticipant({ ...byEmail, id: userId, is_paid: true })
   }
 
   async function refreshParticipant() {

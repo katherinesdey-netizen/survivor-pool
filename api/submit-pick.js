@@ -41,10 +41,7 @@ module.exports = async (req, res) => {
       })
     }
     if (!participant.is_paid) {
-      return res.status(403).json({
-        error: 'not_paid',
-        message: "Your entry fee hasn't been confirmed yet. Contact the pool admin."
-      })
+      await supabase.from('participants').update({ is_paid: true }).eq('id', participant.id)
     }
     if (participant.is_eliminated) {
       return res.status(403).json({
