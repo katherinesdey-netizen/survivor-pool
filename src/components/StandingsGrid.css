@@ -193,15 +193,13 @@ thead .sg-sticky {
   color: rgba(255, 255, 255, 0.75);
 }
 
-/* Won */
+/* Won — cell bg only; individual pick rows stay normal color */
 .sg-cell-won { background: rgba(74, 222, 128, 0.08); }
-.sg-cell-won .sg-team { color: #4ade80; }
-.sg-cell-won .sg-seed { color: rgba(74, 222, 128, 0.5); }
 
-/* Lost */
+/* Lost — cell bg; only the losing pick row turns red */
 .sg-cell-lost { background: rgba(248, 113, 113, 0.08); }
-.sg-cell-lost .sg-team { color: #f87171; }
-.sg-cell-lost .sg-seed { color: rgba(248, 113, 113, 0.5); }
+.sg-pick-lost .sg-team { color: #f87171; }
+.sg-pick-lost .sg-seed { color: rgba(248, 113, 113, 0.5); }
 
 /* Pending */
 .sg-cell-pending .sg-team { color: rgba(255, 255, 255, 0.65); }

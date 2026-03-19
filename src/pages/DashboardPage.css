@@ -261,8 +261,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.game-team-row.team-winner .game-team-name { color: #fff; }
-.game-team-row.team-loser  .game-team-name { color: rgba(255,255,255,0.35); }
+.game-team-row.team-winner .game-team-name { color: #4ade80; }
+.game-team-row.team-loser  .game-team-name { color: #f87171; }
 
 .game-score {
   font-size: 14px;
@@ -271,7 +271,8 @@
   text-align: right;
   min-width: 24px;
 }
-.game-team-row.team-loser .game-score { color: rgba(255,255,255,0.35); }
+.game-team-row.team-winner .game-score { color: #4ade80; }
+.game-team-row.team-loser .game-score { color: #f87171; }
 
 .game-pick-count {
   text-align: right;
