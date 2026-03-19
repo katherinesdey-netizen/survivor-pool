@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import './LoginPage.css'
 
-type Step = 'login' | 'register' | 'forgot' | 'forgot_sent' | 'register_confirm'
+type Step = 'login' | 'forgot' | 'forgot_sent'
 
 export default function LoginPage() {
   const { user } = useAuth()
@@ -12,9 +12,6 @@ export default function LoginPage() {
   const [step, setStep] = useState<Step>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [fullName, setFullName] = useState('')
-  const [venmo, setVenmo] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -34,85 +31,6 @@ export default function LoginPage() {
       setLoading(false)
     }
     // on success, useEffect above redirects to dashboard
-  }
-
-  async function handleRegister(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
-
-    if (!fullName.trim()) { setError('Please enter your full name.'); return }
-    if (password.length < 6) { setError('Password must be at least 6 characters.'); return }
-    if (password !== confirmPassword) { setError('Passwords do not match.'); return }
-
-    setLoading(true)
-
-    // Check if a participant row already exists for this email (pre-loaded or existing)
-    const { data: existing } = await supabase
-      .from('participants')
-      .select('id')
-      .ilike('email', email.trim())
-      .maybeSingle()
-
-    const { data, error } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-      options: { emailRedirectTo: undefined }
-    })
-
-    if (error) {
-      if (error.message.toLowerCase().includes('already registered')) {
-        setError('An account with this email already exists. Try logging in.')
-      } else {
-        setError(error.message)
-      }
-      setLoading(false)
-      return
-    }
-
-    if (data.user) {
-      if (existing) {
-        // Pre-loaded participant: update their row to use the new auth user's ID
-        // so AuthContext can find them by user.id
-        const { error: updateError } = await supabase
-          .from('participants')
-          .update({
-            id: data.user.id,
-            full_name: fullName.trim() || undefined,
-            venmo_handle: venmo.trim() || undefined,
-          })
-          .eq('id', existing.id)
-
-        if (updateError) {
-          await supabase.auth.signOut()
-          setError('Account linked but profile update failed. Please contact the pool admin.')
-          setLoading(false)
-          return
-        }
-      } else {
-        // Brand new participant — create a fresh profile row
-        const { error: insertError } = await supabase.from('participants').insert({
-          id: data.user.id,
-          email: email.toLowerCase().trim(),
-          full_name: fullName.trim(),
-          venmo_handle: venmo.trim() || null,
-          is_paid: false,
-          is_admin: false,
-          is_eliminated: false,
-        })
-
-        if (insertError) {
-          await supabase.auth.signOut()
-          setError('Account created but profile setup failed. Please contact the pool admin.')
-          setLoading(false)
-          return
-        }
-      }
-
-      // Sign them in right away
-      await supabase.auth.signInWithPassword({ email: email.trim(), password })
-    }
-
-    setLoading(false)
   }
 
   async function handleForgotPassword(e: React.FormEvent) {
@@ -146,11 +64,7 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className="login-form">
             <div className="welcome-blurb">
               <p>Welcome to my <strong>10th Annual 2026 NCAA Survivor Pool</strong>.</p>
-              <p>For the 10th anniversary of the pool, the team at Adam's Pools, LLC 😂 built a brand new app to run everything. You have two options to get started:</p>
-              <ul className="welcome-options">
-                <li><strong>Create an account</strong> (recommended)</li>
-                <li>Make picks without a password</li>
-              </ul>
+              <p>Registration is closed. Sign in if you have an account, or use the button below to submit picks with just your email.</p>
               <p>The rules remain the same as previous years — <Link to="/rules" className="rules-link">view the rules here</Link>.</p>
             </div>
             <div className="field">
@@ -168,10 +82,6 @@ export default function LoginPage() {
               {loading ? 'Signing in...' : 'Sign In →'}
             </button>
             <div className="login-footer-links">
-              <button type="button" className="link-btn" onClick={() => { setStep('register'); setError('') }}>
-                New? Register here
-              </button>
-              <span className="footer-divider">·</span>
               <button type="button" className="link-btn" onClick={() => { setStep('forgot'); setError('') }}>
                 Forgot password?
               </button>
@@ -191,56 +101,6 @@ export default function LoginPage() {
               🏀 Make picks without an account
             </button>
             <p className="guest-pick-note">No account needed — just enter your email</p>
-          </form>
-        )}
-
-        {step === 'register' && (
-          <form onSubmit={handleRegister} className="login-form">
-            <div className="welcome-blurb">
-              <p>Welcome to my <strong>10th Annual 2026 NCAA Survivor Pool</strong>.</p>
-              <p>For the 10th anniversary of the pool, the team at Adam's Pools, LLC 😂 built a brand new app to run everything. You have two options to get started:</p>
-              <ul className="welcome-options">
-                <li><strong>Create an account</strong> (recommended)</li>
-                <li>Make picks without a password</li>
-              </ul>
-              <p>The rules remain the same as previous years — <Link to="/rules" className="rules-link">view the rules here</Link>.</p>
-            </div>
-            <div className="field">
-              <label>Full name</label>
-              <input type="text" value={fullName} onChange={e => setFullName(e.target.value)}
-                placeholder="Jane Smith" required autoFocus />
-            </div>
-            <div className="field">
-              <label>Email address</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="you@example.com" required />
-            </div>
-            <div className="field">
-              <label>Password <span className="optional">(min 6 characters)</span></label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••" required />
-            </div>
-            <div className="field">
-              <label>Confirm password</label>
-              <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
-                placeholder="••••••••" required />
-            </div>
-            <div className="field">
-              <label>Venmo handle <span className="optional">(optional)</span></label>
-              <input type="text" value={venmo} onChange={e => setVenmo(e.target.value)}
-                placeholder="@jane-smith" />
-            </div>
-            <div className="payment-reminder">
-              <strong>💵 Entry fee: $25 via Venmo</strong>
-              <p>Send payment to <strong>@adam-furtado</strong> before the first game Thursday. Your picks won't count until payment is confirmed.</p>
-            </div>
-            {error && <p className="error-msg">{error}</p>}
-            <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? 'Creating account...' : 'Create Account →'}
-            </button>
-            <button type="button" className="btn-ghost" onClick={() => { setStep('login'); setError('') }}>
-              ← Back to sign in
-            </button>
           </form>
         )}
 
