@@ -106,7 +106,7 @@ export default function StandingsGrid({ participants, picks, days, meId, onRefre
     return (
       <td key={key} className={`sg-pick-cell ${cellCls}`}>
         {dayPicks.map((pick, i) => (
-          <div key={i} className={`sg-pick-row${pick.result === 'lost' ? ' sg-pick-lost' : ''}`}>
+          <div key={i} className={`sg-pick-row${pick.result === 'lost' ? ' sg-pick-lost' : pick.result === 'won' ? ' sg-pick-won' : ''}`}>
             <span className="sg-seed">{pick.teams?.seed ? `#${pick.teams.seed}` : ''}</span>
             <span className="sg-team">{pick.teams?.name ?? '—'}</span>
             {pick.is_auto_assigned && <span className="sg-auto-dot" title="Auto-assigned" />}
