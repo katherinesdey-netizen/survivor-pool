@@ -11,7 +11,7 @@ const supabase = createClient(
 
 // Fetch today's NCAA scores from ESPN's free API
 async function fetchESPNScores() {
-  const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }).replace(/-/g, '')
   const url = `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?dates=${today}&_=${Date.now()}`
 
   const res = await fetch(url, { headers: { 'Cache-Control': 'no-cache' } })
@@ -138,7 +138,7 @@ async function processResults() {
         // Mark losing team as eliminated from tournament
         await supabase
           .from('teams')
-          .update({ is_eliminated: true, eliminated_on_date: today })
+          .update({ is_eliminated: true, eliminated_on: today })
           .eq('id', loserTeam.id)
       }
     }
