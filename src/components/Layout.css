@@ -39,6 +39,35 @@ body {
   background: rgba(45, 212, 191, 0.12);
 }
 
+/* Picks page — selected team: teal */
+.redemption-mode .b-slot.b-selected {
+  background: rgba(45, 212, 191, 0.2) !important;
+  border-color: rgba(45, 212, 191, 0.5) !important;
+}
+.redemption-mode .b-selected .b-seed { color: rgba(45, 212, 191, 0.8); }
+.redemption-mode .b-check { color: #2dd4bf; }
+.redemption-mode .dot-selected {
+  background: rgba(45, 212, 191, 0.4);
+  border: 1px solid #2dd4bf;
+}
+
+/* Picks page — day pill & save button: coral */
+.redemption-mode .day-pill-active {
+  background: rgba(244, 132, 95, 0.18) !important;
+  border-color: rgba(244, 132, 95, 0.6) !important;
+  color: #f4845f !important;
+}
+.redemption-mode .picks-action-bar {
+  background: rgba(244, 132, 95, 0.08);
+  border-color: rgba(244, 132, 95, 0.25);
+}
+.redemption-mode .btn-save {
+  background: #f4845f;
+}
+.redemption-mode .btn-save:hover:not(:disabled) {
+  background: #e06535;
+}
+
 .app-header {
   background: rgba(10,14,26,0.97);
   border-bottom: 1px solid rgba(255,255,255,0.08);

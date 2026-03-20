@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Option 3 — Bracket Lightbox Preview</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; background: #0a0e1a; color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+  /* Simulated picks page header */
+  .picks-header {
+    max-width: 960px; margin: 40px auto 0; padding: 20px 24px;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px; display: flex; justify-content: space-between; align-items: flex-start;
+  }
+  .picks-page-title { font-size: 26px; font-weight: 700; margin: 0 0 4px; }
+  .picks-round { font-size: 14px; color: rgba(255,255,255,0.5); margin-bottom: 8px; }
+
+  .bracket-links-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .bracket-ext-link {
+    font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.45);
+    text-decoration: none; transition: color 0.15s;
+  }
+  .bracket-ext-link:hover { color: rgba(255,255,255,0.85); }
+  .bracket-lightbox-btn {
+    font-size: 13px; font-weight: 500; font-family: inherit;
+    color: rgba(255,107,0,0.8); background: transparent;
+    border: none; padding: 0; cursor: pointer; transition: color 0.15s;
+  }
+  .bracket-lightbox-btn:hover { color: #ff6b00; }
+
+  /* Note */
+  .note { max-width: 960px; margin: 16px auto; padding: 0 24px;
+    font-size: 13px; color: rgba(255,255,255,0.35); }
+
+  /* Lightbox */
+  .bracket-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(0,0,0,0.85);
+    display: none; align-items: center; justify-content: center;
+    padding: 16px;
+  }
+  .bracket-overlay.open { display: flex; }
+  .bracket-modal {
+    background: #141928; border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px; width: 100%; max-width: 900px;
+    max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;
+  }
+  .bracket-modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.08);
+    flex-shrink: 0;
+  }
+  .bracket-modal-title { font-size: 16px; font-weight: 600; }
+  .bracket-modal-close {
+    background: transparent; border: none; color: rgba(255,255,255,0.4);
+    font-size: 18px; cursor: pointer; padding: 4px 8px; border-radius: 6px;
+    font-family: inherit; transition: color 0.15s, background 0.15s;
+  }
+  .bracket-modal-close:hover { color: #fff; background: rgba(255,255,255,0.08); }
+  .bracket-modal-body {
+    flex: 1; overflow: auto; padding: 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .bracket-modal-img { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .bracket-modal-footer {
+    padding: 12px 20px; border-top: 1px solid rgba(255,255,255,0.08);
+    flex-shrink: 0; text-align: right;
+  }
+  .bracket-modal-espn {
+    font-size: 13px; color: rgba(255,255,255,0.4); text-decoration: none;
+    transition: color 0.15s;
+  }
+  .bracket-modal-espn:hover { color: rgba(255,255,255,0.8); }
+</style>
+</head>
+<body>
+
+  <!-- Simulated picks header -->
+  <div class="picks-header">
+    <div>
+      <h1 class="picks-page-title">My Picks</h1>
+      <div class="picks-round">Round of 64 · Thu</div>
+      <div class="bracket-links-row">
+        <a href="https://www.espn.com/mens-college-basketball/tournament/bracket"
+           target="_blank" rel="noopener noreferrer" class="bracket-ext-link">
+          📋 View on ESPN ↗
+        </a>
+        <button class="bracket-lightbox-btn" onclick="openModal()">
+          🔍 View Bracket Here
+        </button>
+      </div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.35);margin-bottom:4px">Deadline</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.8);font-weight:500">Thu, Mar 19 · 11:30 AM ET</div>
+    </div>
+  </div>
+
+  <div class="note">⬆ Click "🔍 View Bracket Here" to preview the lightbox (Option 3)</div>
+
+  <!-- Lightbox -->
+  <div class="bracket-overlay" id="overlay" onclick="closeModal(event)">
+    <div class="bracket-modal" onclick="event.stopPropagation()">
+      <div class="bracket-modal-header">
+        <span class="bracket-modal-title">📋 Official Bracket</span>
+        <button class="bracket-modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="bracket-modal-body">
+        <img
+          src="https://www.ncaa.com/sites/default/files/public/styles/original/public-s3/images/2025/03/16/2025-NCAA-tournament-bracket.png"
+          alt="NCAA Tournament Bracket"
+          class="bracket-modal-img"
+          onerror="this.style.display='none'; this.nextElementSibling.style.display='block'"
+        >
+        <div style="display:none; padding:40px; text-align:center; color:rgba(255,255,255,0.4);">
+          <div style="font-size:48px; margin-bottom:16px">🏀</div>
+          <p>Bracket image will appear here once you swap in the real URL.<br>
+          For now, replace <code>BRACKET_IMAGE_URL</code> in PicksPage.tsx with the real bracket image link.</p>
+        </div>
+      </div>
+      <div class="bracket-modal-footer">
+        <a href="https://www.espn.com/mens-college-basketball/tournament/bracket"
+           target="_blank" rel="noopener noreferrer" class="bracket-modal-espn">
+          Open full bracket on ESPN ↗
+        </a>
+      </div>
+    </div>
+  </div>
+
+<script>
+  function openModal() { document.getElementById('overlay').classList.add('open') }
+  function closeModal(e) {
+    if (!e || e.target === document.getElementById('overlay') || !e.target.closest('.bracket-modal'))
+      document.getElementById('overlay').classList.remove('open')
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal() })
+</script>
+</body>
+</html>
