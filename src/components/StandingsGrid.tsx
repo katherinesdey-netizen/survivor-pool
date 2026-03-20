@@ -41,10 +41,15 @@ export default function StandingsGrid({ participants, picks, days, meId, onRefre
   }
 
   function isRevealed(day: GridDay): boolean {
-    // Never reveal picks for future game dates (regardless of deadline setting)
     const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+    // Future dates: always locked
     if (day.game_date > todayET) return false
-    // Past/today: reveal after deadline (or immediately if no deadline)
+    // Today: only reveal after deadline; no deadline = still locked
+    if (day.game_date === todayET) {
+      if (!day.deadline) return false
+      return new Date() >= new Date(day.deadline)
+    }
+    // Past dates: reveal after deadline, or immediately if no deadline set
     if (!day.deadline) return true
     return new Date() >= new Date(day.deadline)
   }
