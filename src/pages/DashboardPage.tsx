@@ -164,7 +164,7 @@ export default function DashboardPage() {
     const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
     // Round of 64: show Thu Mar 19 alone, or both Thu+Fri on Mar 20
     if (todayET === '2026-03-19') return ['2026-03-19']
-    if (todayET === '2026-03-20') return ['2026-03-19', '2026-03-20']
+    if (todayET === '2026-03-20') return ['2026-03-20', '2026-03-19']
     // Later rounds: show today if it's a tournament day, else next upcoming day
     const days = allDaysRef.current
     if (days.includes(todayET)) return [todayET]
