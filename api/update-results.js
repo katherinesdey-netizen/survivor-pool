@@ -12,9 +12,9 @@ const supabase = createClient(
 // Fetch today's NCAA scores from ESPN's free API
 async function fetchESPNScores() {
   const today = new Date().toISOString().split('T')[0].replace(/-/g, '')
-  const url = `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?dates=${today}`
-  
-  const res = await fetch(url)
+  const url = `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?dates=${today}&_=${Date.now()}`
+
+  const res = await fetch(url, { headers: { 'Cache-Control': 'no-cache' } })
   if (!res.ok) throw new Error(`ESPN API error: ${res.status}`)
   const data = await res.json()
   return data.events || []
@@ -82,7 +82,9 @@ async function processResults() {
 
   try {
     // 1. Fetch scores from ESPN
-    log.push('Fetching ESPN scores...')
+    const etDate = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+    const utcDate = new Date().toISOString().split('T')[0]
+    log.push(`Fetching ESPN scores... ET=${etDate} UTC=${utcDate}`)
     const events = await fetchESPNScores()
     log.push(`Found ${events.length} games today`)
 
