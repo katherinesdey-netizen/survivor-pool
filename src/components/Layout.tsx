@@ -35,7 +35,7 @@ export default function Layout() {
   const picksPath = activePool === 'redemption' ? '/redemption/picks' : '/picks'
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${activePool === 'redemption' ? ' redemption-mode' : ''}`}>
       <header className="app-header">
         <div className="header-inner">
           <Link to="/dashboard" className="header-brand">

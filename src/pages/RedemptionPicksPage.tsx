@@ -48,8 +48,11 @@ function isDayUnlocked(days: TournamentDay[], index: number): boolean {
 }
 
 export default function RedemptionPicksPage() {
-  const { redemptionParticipant, loading: authLoading } = useAuth()
+  const { redemptionParticipant, loading: authLoading, setActivePool } = useAuth()
   const navigate = useNavigate()
+
+  // Sync nav toggle to redemption mode whenever this page is active
+  useEffect(() => { setActivePool('redemption') }, []) // eslint-disable-line
   const [bracketOpen, setBracketOpen]     = useState(false)
   const [teams, setTeams]                 = useState<Team[]>([])
   const [games, setGames]                 = useState<Game[]>([])
