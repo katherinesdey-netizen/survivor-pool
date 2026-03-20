@@ -96,14 +96,14 @@ body {
 }
 
 .pool-toggle.redemption-active {
-  background: rgba(20, 160, 120, 0.2);
-  border-color: rgba(20, 160, 120, 0.5);
-  color: #4ecca3;
+  background: rgba(13, 42, 62, 0.8);
+  border-color: rgba(45, 212, 191, 0.5);
+  color: #2dd4bf;
 }
 
 .pool-toggle.redemption-active:hover {
-  background: rgba(20, 160, 120, 0.3);
-  border-color: rgba(20, 160, 120, 0.7);
+  background: rgba(13, 42, 62, 0.95);
+  border-color: rgba(45, 212, 191, 0.75);
 }
 
 .mobile-pool-toggle {
@@ -127,9 +127,9 @@ body {
 }
 
 .mobile-pool-toggle.redemption-active {
-  background: rgba(20, 160, 120, 0.15);
-  border-color: rgba(20, 160, 120, 0.4);
-  color: #4ecca3;
+  background: rgba(13, 42, 62, 0.8);
+  border-color: rgba(45, 212, 191, 0.4);
+  color: #2dd4bf;
 }
 
 .signout-btn {
