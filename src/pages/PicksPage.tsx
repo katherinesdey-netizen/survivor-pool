@@ -41,8 +41,10 @@ const TH = 34  // team slot height px
 const TG = 2   // gap between teams in a matchup
 
 function isDayUnlocked(days: TournamentDay[], index: number): boolean {
+  if (days[index].game_date >= '2026-03-21') return false
   if (index <= 1) return true
-  return new Date() >= new Date(days[index - 1].deadline)
+  const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+  return days[index - 1].game_date <= todayET
 }
 
 // Option 3 preview — swap in a real bracket image URL once available

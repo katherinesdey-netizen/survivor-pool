@@ -215,16 +215,6 @@ thead .sg-sticky {
 .sg-cell-upcoming, .sg-cell-empty { background: transparent; }
 .sg-upcoming-label, .sg-no-pick { color: rgba(255, 255, 255, 0.1); font-size: 11px; }
 
-/* Auto-assigned dot */
-.sg-auto-dot {
-  display: inline-block;
-  width: 5px;
-  height: 5px;
-  background: #ffd700;
-  border-radius: 50%;
-  margin-left: 3px;
-  flex-shrink: 0;
-}
 
 /* ── Status column ───────────────────────────────────────── */
 .sg-col-status {
