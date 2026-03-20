@@ -86,6 +86,12 @@ async function processResults() {
     const events = await fetchESPNScores()
     log.push(`Found ${events.length} games today`)
 
+    // Log status of first few games for diagnostics
+    events.slice(0, 3).forEach((e, i) => {
+      const st = e.status?.type
+      log.push(`Game ${i+1} status: name=${st?.name} completed=${st?.completed}`)
+    })
+
     const completedGames = parseCompletedGames(events)
     log.push(`${completedGames.length} games completed`)
 
