@@ -60,14 +60,20 @@ async function findTeamByName(espnName, espnId) {
     if (byId) return byId
   }
 
-  // Fallback: case-insensitive name match
+  // Fallback 1: exact case-insensitive name match
   const { data: exact } = await supabase
     .from('teams')
     .select('id, name')
     .ilike('name', espnName)
     .maybeSingle()
+  if (exact) return exact
 
-  return exact || null
+  // Fallback 2: ESPN often returns "Duke Blue Devils" but DB has "Duke"
+  // Check if ESPN name contains our DB team name (case-insensitive)
+  const { data: allTeams } = await supabase.from('teams').select('id, name')
+  const espnLower = espnName.toLowerCase()
+  const match = (allTeams || []).find(t => espnLower.includes(t.name.toLowerCase()))
+  return match || null
 }
 
 // Main processing function
