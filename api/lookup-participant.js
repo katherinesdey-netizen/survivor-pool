@@ -52,7 +52,7 @@ module.exports = async (req, res) => {
     }
 
     // ── 2. Find today's open tournament day ───────────────
-    const todayStr = new Date().toISOString().split('T')[0]
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
     const { data: daysData } = await supabase
       .from('tournament_days')
       .select('game_date, round_name, deadline, picks_required')
