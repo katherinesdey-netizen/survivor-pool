@@ -9,15 +9,20 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY // needs service key to bypass RLS
 )
 
-// Fetch today's NCAA scores from ESPN's free API
-async function fetchESPNScores() {
-  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }).replace(/-/g, '')
-  const url = `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?dates=${today}&_=${Date.now()}`
-
+// Fetch NCAA scores from ESPN for a given date (YYYYMMDD string)
+async function fetchESPNScores(dateStr) {
+  const url = `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?dates=${dateStr}&_=${Date.now()}`
   const res = await fetch(url, { headers: { 'Cache-Control': 'no-cache' } })
   if (!res.ok) throw new Error(`ESPN API error: ${res.status}`)
   const data = await res.json()
   return data.events || []
+}
+
+// Return ET date string offset by `daysAgo` (0 = today, 1 = yesterday)
+function etDateStr(daysAgo = 0) {
+  const d = new Date()
+  d.setDate(d.getDate() - daysAgo)
+  return d.toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
 }
 
 // Extract completed games with winner/loser from ESPN data
@@ -41,7 +46,7 @@ function parseCompletedGames(events) {
       loserName: loser.team.displayName,
       winnerId: parseInt(winner.team.id, 10),
       loserId: parseInt(loser.team.id, 10),
-      gameDate: event.date?.split('T')[0]
+      gameDate: event.date ? new Date(event.date).toLocaleDateString('en-CA', { timeZone: 'America/New_York' }) : null
     })
   }
 
@@ -81,18 +86,17 @@ async function processResults() {
   const log = []
 
   try {
-    // 1. Fetch scores from ESPN
-    const etDate = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
-    const utcDate = new Date().toISOString().split('T')[0]
-    log.push(`Fetching ESPN scores... ET=${etDate} UTC=${utcDate}`)
-    const events = await fetchESPNScores()
-    log.push(`Found ${events.length} games today`)
+    // 1. Fetch scores from ESPN — today AND yesterday (catches any missed results)
+    const todayET = etDateStr(0)
+    const yesterdayET = etDateStr(1)
+    log.push(`Fetching ESPN scores... today=${todayET} yesterday=${yesterdayET}`)
 
-    // Log status of first few games for diagnostics
-    events.slice(0, 3).forEach((e, i) => {
-      const st = e.status?.type
-      log.push(`Game ${i+1} status: name=${st?.name} completed=${st?.completed}`)
-    })
+    const [todayEvents, yesterdayEvents] = await Promise.all([
+      fetchESPNScores(todayET.replace(/-/g, '')),
+      fetchESPNScores(yesterdayET.replace(/-/g, ''))
+    ])
+    const events = [...todayEvents, ...yesterdayEvents]
+    log.push(`Found ${todayEvents.length} games today, ${yesterdayEvents.length} yesterday`)
 
     const completedGames = parseCompletedGames(events)
     log.push(`${completedGames.length} games completed`)
@@ -101,17 +105,15 @@ async function processResults() {
       return { success: true, log, message: 'No completed games found.' }
     }
 
-    // 2. For each completed game, update picks
-    // Use Eastern time so late-night games (finishing after midnight UTC) still
-    // match picks stored under the correct tournament date
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
+    // 2. For each completed game, update picks using the game's actual ET date
     let picksUpdated = 0
 
     for (const game of completedGames) {
       const winnerTeam = await findTeamByName(game.winnerName, game.winnerId)
       const loserTeam = await findTeamByName(game.loserName, game.loserId)
+      const gameDate = game.gameDate // ET date stored during parseCompletedGames
 
-      log.push(`Game: ${game.winnerName} beat ${game.loserName}`)
+      log.push(`Game (${gameDate}): ${game.winnerName} beat ${game.loserName}`)
       log.push(`  Matched: winner=${winnerTeam?.name || 'NOT FOUND'}, loser=${loserTeam?.name || 'NOT FOUND'}`)
 
       // Mark winning picks as won
@@ -120,7 +122,7 @@ async function processResults() {
           .from('picks')
           .update({ result: 'won' })
           .eq('team_id', winnerTeam.id)
-          .eq('game_date', today)
+          .eq('game_date', gameDate)
           .eq('result', 'pending')
         picksUpdated += count || 0
       }
@@ -131,54 +133,62 @@ async function processResults() {
           .from('picks')
           .update({ result: 'lost' })
           .eq('team_id', loserTeam.id)
-          .eq('game_date', today)
+          .eq('game_date', gameDate)
           .eq('result', 'pending')
         picksUpdated += count || 0
 
         // Mark losing team as eliminated from tournament
         await supabase
           .from('teams')
-          .update({ is_eliminated: true, eliminated_on: today })
+          .update({ is_eliminated: true, eliminated_on: gameDate })
           .eq('id', loserTeam.id)
       }
     }
 
     log.push(`Updated ${picksUpdated} picks`)
 
-    // 3. Check for participant eliminations
-    // Find all active participants who have a losing pick today
+    // 3. Check for participant eliminations across all processed dates
+    const processedDates = [...new Set(completedGames.map(g => g.gameDate).filter(Boolean))]
     const { data: losingPicks } = await supabase
       .from('picks')
-      .select('participant_id')
-      .eq('game_date', today)
+      .select('participant_id, game_date')
+      .in('game_date', processedDates)
       .eq('result', 'lost')
 
     if (losingPicks && losingPicks.length > 0) {
-      const losingParticipantIds = [...new Set(losingPicks.map(p => p.participant_id))]
+      // Group by participant; use earliest losing date for elimination date
+      const elimDateByParticipant = {}
+      for (const pick of losingPicks) {
+        const prev = elimDateByParticipant[pick.participant_id]
+        if (!prev || pick.game_date < prev) elimDateByParticipant[pick.participant_id] = pick.game_date
+      }
+      const losingParticipantIds = Object.keys(elimDateByParticipant)
       log.push(`Eliminating ${losingParticipantIds.length} participant(s)`)
 
-      // Eliminate all at once with same date (handles tie rule)
-      const { data: newlyEliminated } = await supabase
-        .from('participants')
-        .update({
-          is_eliminated: true,
-          eliminated_on_date: today
-        })
-        .in('id', losingParticipantIds)
-        .eq('is_eliminated', false) // don't re-eliminate already eliminated
-        .select('id, full_name, email')
+      // Eliminate each participant with their correct losing date (preserves tie rule)
+      const newlyEliminated = []
+      for (const participantId of losingParticipantIds) {
+        const elimDate = elimDateByParticipant[participantId]
+        const { data: updated } = await supabase
+          .from('participants')
+          .update({ is_eliminated: true, eliminated_on_date: elimDate })
+          .eq('id', participantId)
+          .eq('is_eliminated', false)
+          .select('id, full_name, email')
+        if (updated && updated.length > 0) newlyEliminated.push(...updated)
+      }
 
       // Send elimination emails (non-blocking)
-      if (newlyEliminated && newlyEliminated.length > 0) {
+      if (newlyEliminated.length > 0) {
         try {
           const resend = new Resend(process.env.RESEND_API_KEY)
 
           // Get the losing pick details for each eliminated participant
           const { data: losingPickDetails } = await supabase
             .from('picks')
-            .select('participant_id, teams(name, seed)')
+            .select('participant_id, game_date, teams(name, seed)')
             .in('participant_id', newlyEliminated.map(p => p.id))
-            .eq('game_date', today)
+            .in('game_date', processedDates)
             .eq('result', 'lost')
 
           const pickByParticipant = {}
