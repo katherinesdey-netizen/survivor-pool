@@ -41,7 +41,7 @@ interface Pick {
   participants: { full_name: string }
 }
 
-type Tab = 'participants' | 'picks' | 'assign' | 'recaps'
+type Tab = 'participants' | 'redemption' | 'picks' | 'assign' | 'recaps'
 
 interface Recap {
   id: number
@@ -55,6 +55,7 @@ export default function AdminPage() {
   const { session } = useAuth()
   const [tab, setTab] = useState<Tab>('participants')
   const [participants, setParticipants] = useState<Participant[]>([])
+  const [redemptionParticipants, setRedemptionParticipants] = useState<Participant[]>([])
   const [teams, setTeams] = useState<Team[]>([])
   const [days, setDays] = useState<TournamentDay[]>([])
   const [picks, setPicks] = useState<Pick[]>([])
@@ -84,8 +85,9 @@ export default function AdminPage() {
   async function fetchData() {
     setLoading(true)
 
-    const [{ data: pData }, { data: tData }, { data: dData }, { data: pickData }, { data: recapData }] = await Promise.all([
-      supabase.from('participants').select('*').order('full_name'),
+    const [{ data: pData }, { data: rpData }, { data: tData }, { data: dData }, { data: pickData }, { data: recapData }] = await Promise.all([
+      supabase.from('participants').select('*').eq('pool', 'main').order('full_name'),
+      supabase.from('participants').select('*').eq('pool', 'redemption').order('full_name'),
       supabase.from('teams').select('*').eq('is_eliminated', false).order('seed'),
       supabase.from('tournament_days').select('*').order('game_date'),
       supabase.from('picks').select('id, participant_id, team_id, game_date, result, is_auto_assigned, teams(name, seed), participants(full_name)').order('game_date', { ascending: false }),
@@ -93,6 +95,7 @@ export default function AdminPage() {
     ])
 
     setParticipants(pData || [])
+    setRedemptionParticipants(rpData || [])
     setTeams(tData || [])
     setDays(dData || [])
     setPicks((pickData as any) || [])
@@ -408,6 +411,9 @@ export default function AdminPage() {
         <button className={`admin-tab ${tab === 'participants' ? 'active' : ''}`} onClick={() => setTab('participants')}>
           Participants ({participants.length})
         </button>
+        <button className={`admin-tab ${tab === 'redemption' ? 'active' : ''}`} onClick={() => setTab('redemption')}>
+          🏝️ Redemption ({redemptionParticipants.length})
+        </button>
         <button className={`admin-tab ${tab === 'picks' ? 'active' : ''}`} onClick={() => setTab('picks')}>
           All Picks ({picks.length})
         </button>
@@ -418,6 +424,65 @@ export default function AdminPage() {
           Recaps ({recaps.length})
         </button>
       </div>
+
+      {/* REDEMPTION ISLAND TAB */}
+      {tab === 'redemption' && (
+        <div className="admin-table-wrap">
+          {redemptionParticipants.length === 0 ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: 'rgba(255,255,255,0.4)' }}>
+              No Redemption Island participants yet.
+            </div>
+          ) : (
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Venmo</th>
+                  <th>Paid</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {redemptionParticipants.map(p => (
+                  <tr key={p.id} className={p.is_eliminated ? 'row-eliminated' : ''}>
+                    <td className="td-name">{p.full_name}</td>
+                    <td className="td-email">{p.email}</td>
+                    <td className="td-venmo">{p.venmo_handle || '—'}</td>
+                    <td>
+                      <span className={`status-pill ${p.is_paid ? 'paid' : 'unpaid'}`}>
+                        {p.is_paid ? '✅ Paid' : '⏳ Unpaid'}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`status-pill ${p.is_eliminated ? 'eliminated' : 'alive'}`}>
+                        {p.is_eliminated ? '💀 Out' : '🟢 Alive'}
+                      </span>
+                    </td>
+                    <td className="td-actions">
+                      <button
+                        className={`action-btn ${p.is_paid ? 'btn-warn' : 'btn-green'}`}
+                        onClick={() => togglePaid(p)}
+                        disabled={saving === p.id + '_paid'}
+                      >
+                        {p.is_paid ? 'Mark Unpaid' : 'Mark Paid'}
+                      </button>
+                      <button
+                        className={`action-btn ${p.is_eliminated ? 'btn-green' : 'btn-warn'}`}
+                        onClick={() => toggleEliminated(p)}
+                        disabled={saving === p.id + '_elim'}
+                      >
+                        {p.is_eliminated ? 'Reinstate' : 'Eliminate'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
 
       {/* PARTICIPANTS TAB */}
       {tab === 'participants' && (
@@ -554,6 +619,9 @@ export default function AdminPage() {
                 <option value="">Select participant...</option>
                 {participants.filter(p => p.is_paid && !p.is_eliminated).map(p => (
                   <option key={p.id} value={p.id}>{p.full_name}</option>
+                ))}
+                {redemptionParticipants.filter(p => p.is_paid && !p.is_eliminated).map(p => (
+                  <option key={p.id} value={p.id}>{p.full_name} (Redemption)</option>
                 ))}
               </select>
             </div>

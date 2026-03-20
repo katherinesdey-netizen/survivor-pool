@@ -6,6 +6,50 @@
   width: 100%;
 }
 
+/* ── Pool tabs ─────────────────────────────────────────── */
+.standings-tabs {
+  display: flex;
+  gap: 8px;
+}
+.standings-tab {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.6);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.standings-tab:hover {
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.85);
+}
+.standings-tab.active {
+  background: rgba(99,102,241,0.2);
+  border-color: rgba(99,102,241,0.5);
+  color: #a5b4fc;
+}
+
+/* ── Redemption empty state ─────────────────────────────── */
+.redemption-empty {
+  text-align: center;
+  padding: 60px 24px;
+  color: rgba(255,255,255,0.5);
+}
+.redemption-empty h2 {
+  font-size: 20px;
+  color: rgba(255,255,255,0.7);
+  margin: 0 0 12px;
+}
+.redemption-empty p {
+  font-size: 14px;
+  max-width: 360px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
 /* ── Stats bar ─────────────────────────────────────────── */
 .standings-stats {
   background: rgba(255, 255, 255, 0.04);

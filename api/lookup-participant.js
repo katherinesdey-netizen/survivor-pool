@@ -23,11 +23,24 @@ module.exports = async (req, res) => {
 
   try {
     // ── 1. Look up participant ─────────────────────────────
+    // Scope to pool='main' so a person in both pools doesn't get an ambiguous match.
     let { data: participant, error: pErr } = await supabase
       .from('participants')
       .select('id, full_name, is_paid, is_eliminated')
       .ilike('email', email.trim())
+      .eq('pool', 'main')
       .maybeSingle()
+
+    // Pre-migration fallback: pool column may not exist yet
+    if (pErr && pErr.code === '42703') {
+      const res = await supabase
+        .from('participants')
+        .select('id, full_name, is_paid, is_eliminated')
+        .ilike('email', email.trim())
+        .maybeSingle()
+      participant = res.data
+      pErr = res.error
+    }
 
     if (pErr) throw pErr
 

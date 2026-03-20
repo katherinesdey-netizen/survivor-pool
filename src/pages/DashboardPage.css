@@ -1,5 +1,88 @@
 .dashboard { display: flex; flex-direction: column; gap: 16px; }
 
+/* ── Redemption Island card ── */
+.redemption-card {
+  background: linear-gradient(135deg, rgba(255,165,0,0.1) 0%, rgba(255,100,0,0.06) 100%);
+  border: 1px solid rgba(255,165,0,0.3);
+  border-radius: 16px;
+  padding: 20px 24px;
+}
+.redemption-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.redemption-icon { font-size: 28px; line-height: 1; }
+.redemption-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+}
+.redemption-subtitle {
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+  margin-top: 2px;
+}
+.redemption-body p {
+  font-size: 13px;
+  color: rgba(255,255,255,0.7);
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+.redemption-note {
+  font-size: 11px !important;
+  color: rgba(255,255,255,0.4) !important;
+  margin-top: 6px !important;
+}
+.redemption-error {
+  font-size: 13px;
+  color: #ff6b6b;
+  margin-bottom: 10px;
+}
+.redemption-status-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.redemption-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+.redemption-badge.badge-pending { background: rgba(255,165,0,0.15); color: #ffb347; }
+.redemption-badge.badge-alive   { background: rgba(0,200,100,0.15);  color: #4ade80; }
+.redemption-badge.badge-out     { background: rgba(255,80,80,0.15);   color: #f87171; }
+.btn-redemption-register {
+  display: inline-block;
+  background: linear-gradient(135deg, #ff8c00, #e65c00);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.btn-redemption-register:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-redemption-register:hover:not(:disabled) { opacity: 0.9; }
+.btn-redemption-picks {
+  display: inline-block;
+  background: rgba(255,165,0,0.15);
+  color: #ffb347;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.btn-redemption-picks:hover { background: rgba(255,165,0,0.25); }
+
 /* ── Column layout ── */
 .hq-columns {
   display: grid;

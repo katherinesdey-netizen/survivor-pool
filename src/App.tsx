@@ -8,6 +8,7 @@ import AdminPage from './pages/AdminPage'
 import StandingsPage from './pages/StandingsPage'
 import GuestPickPage from './pages/GuestPickPage'
 import PicksPage from './pages/PicksPage'
+import RedemptionPicksPage from './pages/RedemptionPicksPage'
 import RecapsPage from './pages/RecapsPage'
 import RulesPage from './pages/RulesPage'
 import Layout from './components/Layout'
@@ -44,6 +45,7 @@ export default function App() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="picks" element={<PicksPage />} />
+            <Route path="redemption/picks" element={<RedemptionPicksPage />} />
             <Route path="standings" element={<StandingsPage />} />
             <Route path="recaps" element={<RecapsPage />} />
             <Route path="rules" element={<RulesPage />} />

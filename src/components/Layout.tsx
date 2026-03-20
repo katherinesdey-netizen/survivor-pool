@@ -1,12 +1,15 @@
 import React, { useState } from 'react'
-import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import './Layout.css'
 
 export default function Layout() {
-  const { user, participant, signOut } = useAuth()
+  const { user, participant, redemptionParticipant, activePool, setActivePool, signOut } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
+
+  const hasRedemption = !!(redemptionParticipant && !redemptionParticipant.is_eliminated)
 
   async function handleSignOut() {
     setMenuOpen(false)
@@ -20,6 +23,17 @@ export default function Layout() {
 
   function closeMenu() { setMenuOpen(false) }
 
+  function togglePool() {
+    const next = activePool === 'main' ? 'redemption' : 'main'
+    setActivePool(next)
+    if (location.pathname === '/picks' || location.pathname === '/redemption/picks') {
+      navigate(next === 'redemption' ? '/redemption/picks' : '/picks')
+    }
+    setMenuOpen(false)
+  }
+
+  const picksPath = activePool === 'redemption' ? '/redemption/picks' : '/picks'
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -31,7 +45,7 @@ export default function Layout() {
           {/* Desktop nav */}
           <nav className="header-nav desktop-nav">
             <NavLink to="/dashboard" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Headquarters</NavLink>
-            <NavLink to="/picks" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>My Picks</NavLink>
+            <NavLink to={picksPath} className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>My Picks</NavLink>
             <NavLink to="/standings" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Standings</NavLink>
             <NavLink to="/recaps" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Recaps</NavLink>
             <NavLink to="/rules" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Rules</NavLink>
@@ -39,6 +53,17 @@ export default function Layout() {
               <NavLink to="/admin" className={({isActive}) => isActive ? 'nav-link admin-link active' : 'nav-link admin-link'}>Admin</NavLink>
             )}
           </nav>
+
+          {hasRedemption && (
+            <button
+              className={`pool-toggle desktop-only${activePool === 'redemption' ? ' redemption-active' : ''}`}
+              onClick={togglePool}
+              title={activePool === 'main' ? 'Switch to Redemption Island' : 'Switch to Main Pool'}
+            >
+              {activePool === 'redemption' ? '🏝️ Redemption' : '🏀 Main Pool'}
+            </button>
+          )}
+
           {user
             ? <button className="signout-btn desktop-only" onClick={handleSignOut}>Sign out</button>
             : <button className="signout-btn desktop-only" onClick={() => navigate('/login')}>Log in</button>
@@ -58,12 +83,20 @@ export default function Layout() {
         {menuOpen && (
           <nav className="mobile-nav">
             <NavLink to="/dashboard" className={({isActive}) => isActive ? 'mobile-nav-link active' : 'mobile-nav-link'} onClick={closeMenu}>Headquarters</NavLink>
-            <NavLink to="/picks" className={({isActive}) => isActive ? 'mobile-nav-link active' : 'mobile-nav-link'} onClick={closeMenu}>My Picks</NavLink>
+            <NavLink to={picksPath} className={({isActive}) => isActive ? 'mobile-nav-link active' : 'mobile-nav-link'} onClick={closeMenu}>My Picks</NavLink>
             <NavLink to="/standings" className={({isActive}) => isActive ? 'mobile-nav-link active' : 'mobile-nav-link'} onClick={closeMenu}>Standings</NavLink>
             <NavLink to="/recaps" className={({isActive}) => isActive ? 'mobile-nav-link active' : 'mobile-nav-link'} onClick={closeMenu}>Recaps</NavLink>
             <NavLink to="/rules" className={({isActive}) => isActive ? 'mobile-nav-link active' : 'mobile-nav-link'} onClick={closeMenu}>Rules</NavLink>
             {participant?.is_admin && (
               <NavLink to="/admin" className={({isActive}) => isActive ? 'mobile-nav-link admin-link active' : 'mobile-nav-link admin-link'} onClick={closeMenu}>Admin</NavLink>
+            )}
+            {hasRedemption && (
+              <button
+                className={`mobile-pool-toggle${activePool === 'redemption' ? ' redemption-active' : ''}`}
+                onClick={togglePool}
+              >
+                {activePool === 'redemption' ? '🏝️ Redemption Island' : '🏀 Main Pool'}
+              </button>
             )}
             {user
               ? <button className="mobile-signout-btn" onClick={handleSignOut}>Sign out</button>

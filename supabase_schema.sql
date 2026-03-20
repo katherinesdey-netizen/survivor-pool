@@ -109,6 +109,53 @@ CREATE POLICY "Participants can update their own picks"
   USING (auth.uid() = participant_id);
 
 -- ============================================
+-- REDEMPTION ISLAND MIGRATION
+-- Run this ONCE in Supabase SQL Editor BEFORE
+-- deploying the frontend changes.
+-- Fully backward-compatible with the current frontend.
+-- ============================================
+
+-- 1. Drop FK that ties participants.id to auth.users
+--    (redemption rows use synthetic UUIDs as their PK)
+ALTER TABLE participants DROP CONSTRAINT participants_id_fkey;
+
+-- 2. Add pool and auth_user_id columns
+ALTER TABLE participants
+  ADD COLUMN pool TEXT NOT NULL DEFAULT 'main',
+  ADD COLUMN auth_user_id UUID;
+
+-- 3. Backfill existing rows (auth_user_id = id for all main-pool rows)
+UPDATE participants SET auth_user_id = id WHERE pool = 'main';
+ALTER TABLE participants ALTER COLUMN auth_user_id SET NOT NULL;
+
+-- 4. Prevent one person registering twice in the same pool
+ALTER TABLE participants ADD CONSTRAINT participants_auth_user_pool_key
+  UNIQUE (auth_user_id, pool);
+
+-- 5. Re-add FK on auth_user_id (the real link to auth.users)
+ALTER TABLE participants
+  ADD CONSTRAINT participants_auth_user_id_fkey
+  FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+-- 6. Update RLS policies (old ones used auth.uid() = id which breaks for redemption rows)
+DROP POLICY "Users can update their own profile" ON participants;
+DROP POLICY "Users can insert their own profile" ON participants;
+
+CREATE POLICY "Users can update their own profile"
+  ON participants FOR UPDATE
+  USING (auth.uid() = auth_user_id);
+
+-- Main-pool self-registration still allowed.
+-- Redemption rows are inserted server-side via service key in api/register-redemption.js
+CREATE POLICY "Users can insert their own main profile"
+  ON participants FOR INSERT
+  WITH CHECK (auth.uid() = auth_user_id AND pool = 'main');
+
+-- ============================================
+-- END REDEMPTION ISLAND MIGRATION
+-- ============================================
+
+-- ============================================
 -- SEED: Tournament days for 2025 March Madness
 -- ============================================
 
