@@ -416,47 +416,49 @@ export default function PicksPage() {
       </div>
 
       {/* Matchups for selected day, grouped by region.
-          Falls back to hardcoded R64 seed pods when the games table has no entries for the day. */}
+          R64 always uses hardcoded seed pods (deterministic, games table is partial).
+          All other rounds use the games table; falls back to pods if empty. */}
       <div className="regions-grid">
         {REGIONS.map(region => {
           const gamesForRegion = matchupsByRegion[region]
+          const isR64 = selectedDay?.round_name === 'Round of 64'
 
-          // Games table has data for this day — use real matchups
-          if (dayGames.length > 0) {
-            if (gamesForRegion.length === 0) return null
+          // Round of 64: always use hardcoded seed pods — games table is unreliable
+          if (isR64) {
             return (
               <div key={region} className="region-section">
                 <div className="region-section-header">{region}</div>
-                {gamesForRegion.map(({ game, team1, team2 }) => (
-                  <div key={game.id} className="b-matchup">
-                    <TeamSlot team={team1} />
-                    <div className="b-gap" style={{ height: TG }} />
-                    <TeamSlot team={team2} />
-                  </div>
-                ))}
+                {R64_PODS.map(([seed1, seed2]) => {
+                  const team1 = byRegionSeed[region]?.[seed1] || null
+                  const team2 = byRegionSeed[region]?.[seed2] || null
+                  return (
+                    <div key={seed1} className="b-matchup">
+                      <TeamSlot team={team1} />
+                      <div className="b-gap" style={{ height: TG }} />
+                      <TeamSlot team={team2} />
+                    </div>
+                  )
+                })}
               </div>
             )
           }
 
-          // Fallback: no games table data — use R64 seed pods (shows all teams)
+          // All other rounds: use games table matchups
+          if (gamesForRegion.length === 0) return null
           return (
             <div key={region} className="region-section">
               <div className="region-section-header">{region}</div>
-              {R64_PODS.map(([seed1, seed2]) => {
-                const team1 = byRegionSeed[region]?.[seed1] || null
-                const team2 = byRegionSeed[region]?.[seed2] || null
-                return (
-                  <div key={seed1} className="b-matchup">
-                    <TeamSlot team={team1} />
-                    <div className="b-gap" style={{ height: TG }} />
-                    <TeamSlot team={team2} />
-                  </div>
-                )
-              })}
+              {gamesForRegion.map(({ game, team1, team2 }) => (
+                <div key={game.id} className="b-matchup">
+                  <TeamSlot team={team1} />
+                  <div className="b-gap" style={{ height: TG }} />
+                  <TeamSlot team={team2} />
+                </div>
+              ))}
             </div>
           )
         })}
-        {dayGames.length > 0 && unregionedMatchups.map(({ game, team1, team2 }) => (
+        {unregionedMatchups.map(({ game, team1, team2 }) => (
           <div key={game.id} className="b-matchup">
             <TeamSlot team={team1} />
             <div className="b-gap" style={{ height: TG }} />
