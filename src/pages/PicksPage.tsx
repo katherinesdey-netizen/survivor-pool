@@ -32,9 +32,6 @@ interface Game {
   team2_id: number | null
 }
 
-// Seed matchup pairings for R64, in bracket order top-to-bottom
-const R64_PODS: [number, number][] = [[1,16],[8,9],[5,12],[4,13],[6,11],[3,14],[7,10],[2,15]]
-
 const REGIONS = ['East', 'West', 'South', 'Midwest']
 
 const TH = 34  // team slot height px
@@ -224,11 +221,23 @@ export default function PicksPage() {
     }
   }
 
-  const byRegionSeed: Record<string, Record<number, Team>> = {}
-  teams.forEach(t => {
-    if (!byRegionSeed[t.region]) byRegionSeed[t.region] = {}
-    byRegionSeed[t.region][t.seed] = t
-  })
+  // Build matchups for the selected day, grouped by region
+  const teamById = Object.fromEntries(teams.map(t => [t.id, t]))
+
+  const matchupsByRegion: Record<string, { game: Game; team1: Team | null; team2: Team | null }[]> = {}
+  for (const region of REGIONS) matchupsByRegion[region] = []
+  const unregionedMatchups: { game: Game; team1: Team | null; team2: Team | null }[] = []
+
+  for (const game of dayGames) {
+    const team1 = game.team1_id != null ? (teamById[game.team1_id] ?? null) : null
+    const team2 = game.team2_id != null ? (teamById[game.team2_id] ?? null) : null
+    const region = team1?.region ?? team2?.region ?? null
+    if (region && REGIONS.includes(region)) {
+      matchupsByRegion[region].push({ game, team1, team2 })
+    } else {
+      unregionedMatchups.push({ game, team1, team2 })
+    }
+  }
 
   function TeamSlot({ team }: { team: Team | null }) {
     if (!team) return (
@@ -391,34 +400,44 @@ export default function PicksPage() {
 
       {/* Legend */}
       <div className="bracket-legend">
-        <span className="legend-item legend-item-bright"><span className="legend-dot dot-alive" />Playing today</span>
         <span className="legend-item"><span className="legend-dot dot-selected" />Your pick</span>
         <span className="legend-item"><span className="legend-dot dot-used" />Already used</span>
         <span className="legend-item"><span className="legend-dot dot-out" />Eliminated</span>
-        {availableTeamIds !== null && (
-          <span className="legend-item"><span className="legend-dot dot-not-today" />Not today</span>
-        )}
       </div>
 
-      {/* All 4 regions — R64 matchups only */}
-      <div className="regions-grid">
-        {REGIONS.map(region => (
-          <div key={region} className="region-section">
-            <div className="region-section-header">{region}</div>
-            {R64_PODS.map(([seed1, seed2]) => {
-              const team1 = byRegionSeed[region]?.[seed1] || null
-              const team2 = byRegionSeed[region]?.[seed2] || null
-              return (
-                <div key={seed1} className="b-matchup">
-                  <TeamSlot team={team1} />
-                  <div className="b-gap" style={{ height: TG }} />
-                  <TeamSlot team={team2} />
-                </div>
-              )
-            })}
-          </div>
-        ))}
-      </div>
+      {/* Matchups for selected day, grouped by region */}
+      {dayGames.length === 0 ? (
+        <div className="no-matchups-msg">
+          <p>Game matchups for this round haven't been entered yet.</p>
+          <p>Check back closer to tip-off.</p>
+        </div>
+      ) : (
+        <div className="regions-grid">
+          {REGIONS.flatMap(region => {
+            const games = matchupsByRegion[region]
+            if (games.length === 0) return []
+            return [
+              <div key={region} className="region-section">
+                <div className="region-section-header">{region}</div>
+                {games.map(({ game, team1, team2 }) => (
+                  <div key={game.id} className="b-matchup">
+                    <TeamSlot team={team1} />
+                    <div className="b-gap" style={{ height: TG }} />
+                    <TeamSlot team={team2} />
+                  </div>
+                ))}
+              </div>
+            ]
+          })}
+          {unregionedMatchups.map(({ game, team1, team2 }) => (
+            <div key={game.id} className="b-matchup">
+              <TeamSlot team={team1} />
+              <div className="b-gap" style={{ height: TG }} />
+              <TeamSlot team={team2} />
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Option 3 preview — bracket lightbox */}
       {bracketOpen && (
