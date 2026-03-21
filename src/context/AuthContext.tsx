@@ -102,11 +102,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Update placeholder UUID → real auth UUID (post-migration path)
+    const oldId = byEmail.id
     await supabase.from('participants').update({
       id: userId,
       auth_user_id: userId,
       is_paid: true,
     }).ilike('email', userEmail).eq('pool', 'main')
+    // Re-link any picks that were manually inserted with the placeholder UUID
+    if (oldId !== userId) {
+      await supabase.from('picks').update({ participant_id: userId }).eq('participant_id', oldId)
+    }
     setParticipant({ ...byEmail, id: userId, auth_user_id: userId, is_paid: true })
     setRedemptionParticipant(null)
   }
