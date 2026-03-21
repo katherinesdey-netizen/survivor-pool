@@ -45,13 +45,24 @@ module.exports = async (req, res) => {
 
     const pickedIds = new Set((pickedToday || []).map(p => p.participant_id))
 
+    // Belt-and-suspenders: also exclude anyone with a lost pick, in case
+    // is_eliminated wasn't updated yet when this cron fires
+    const { data: losingPicks } = await supabase
+      .from('picks')
+      .select('participant_id')
+      .eq('result', 'lost')
+
+    const eliminatedByPicks = new Set((losingPicks || []).map(p => p.participant_id))
+
     const { data: participants } = await supabase
       .from('participants')
       .select('id, full_name, email')
       .eq('is_paid', true)
       .eq('is_eliminated', false)
 
-    const unpicked = (participants || []).filter(p => !pickedIds.has(p.id))
+    const unpicked = (participants || []).filter(p =>
+      !pickedIds.has(p.id) && !eliminatedByPicks.has(p.id)
+    )
 
     // Mark sent even if everyone has picked (no need to try again)
     await supabase.from('tournament_days')

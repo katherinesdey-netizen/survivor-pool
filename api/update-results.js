@@ -91,17 +91,28 @@ async function processResults() {
   const log = []
 
   try {
-    // 1. Fetch scores from ESPN — today AND yesterday (catches any missed results)
+    // 1. Fetch scores from ESPN for all past tournament days that still have pending picks.
+    //    The tournament spans 2+ weeks so we can't limit to today/yesterday.
     const todayET = etDateStr(0)
-    const yesterdayET = etDateStr(1)
-    log.push(`Fetching ESPN scores... today=${todayET} yesterday=${yesterdayET}`)
 
-    const [todayEvents, yesterdayEvents] = await Promise.all([
-      fetchESPNScores(todayET.replace(/-/g, '')),
-      fetchESPNScores(yesterdayET.replace(/-/g, ''))
-    ])
-    const events = [...todayEvents, ...yesterdayEvents]
-    log.push(`Found ${todayEvents.length} games today, ${yesterdayEvents.length} yesterday`)
+    const { data: pendingRows } = await supabase
+      .from('picks')
+      .select('game_date')
+      .eq('result', 'pending')
+      .lte('game_date', todayET)
+
+    const datesToCheck = [...new Set((pendingRows || []).map(p => p.game_date))].sort()
+    log.push(`Dates with pending picks: ${datesToCheck.join(', ') || 'none'}`)
+
+    if (datesToCheck.length === 0) {
+      return { success: true, log, message: 'No pending picks found.' }
+    }
+
+    const allEventArrays = await Promise.all(
+      datesToCheck.map(d => fetchESPNScores(d.replace(/-/g, '')))
+    )
+    const events = allEventArrays.flat()
+    log.push(`Fetched ${events.length} total ESPN events across ${datesToCheck.length} date(s)`)
 
     const completedGames = parseCompletedGames(events)
     log.push(`${completedGames.length} games completed`)
