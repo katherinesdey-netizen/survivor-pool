@@ -54,6 +54,7 @@ function parseCompletedGames(events) {
 }
 
 // Find a team in our DB by ESPN numeric ID (exact), falling back to name match
+// Also back-fills espn_id in the DB on first name-based match so future lookups are exact
 async function findTeamByName(espnName, espnId) {
   // Primary: exact match on espn_id column — always correct
   if (espnId) {
@@ -71,13 +72,24 @@ async function findTeamByName(espnName, espnId) {
     .select('id, name')
     .ilike('name', espnName)
     .maybeSingle()
-  if (exact) return exact
+  if (exact) {
+    if (espnId) await supabase.from('teams').update({ espn_id: espnId }).eq('id', exact.id)
+    return exact
+  }
 
   // Fallback 2: ESPN often returns "Duke Blue Devils" but DB has "Duke"
-  // Check if ESPN name contains our DB team name (case-insensitive)
+  // Require the DB name to be at least 5 chars and match as a whole word to avoid
+  // short/ambiguous names (e.g. "Miami") incorrectly matching "Miami (OH)"
   const { data: allTeams } = await supabase.from('teams').select('id, name')
   const espnLower = espnName.toLowerCase()
-  const match = (allTeams || []).find(t => espnLower.includes(t.name.toLowerCase()))
+  const match = (allTeams || []).find(t => {
+    const dbName = t.name.toLowerCase()
+    if (dbName.length < 5) return false // too short to match safely
+    // Only match if the DB name appears as a word boundary in the ESPN name,
+    // AND the ESPN name starts with the DB name (avoids Miami ⊂ Miami (OH))
+    return espnLower.startsWith(dbName) || espnLower === dbName
+  })
+  if (match && espnId) await supabase.from('teams').update({ espn_id: espnId }).eq('id', match.id)
   return match || null
 }
 
@@ -116,25 +128,25 @@ async function processResults() {
       log.push(`Game (${gameDate}): ${game.winnerName} beat ${game.loserName}`)
       log.push(`  Matched: winner=${winnerTeam?.name || 'NOT FOUND'}, loser=${loserTeam?.name || 'NOT FOUND'}`)
 
-      // Mark winning picks as won
+      // Mark winning picks as won (also corrects any previously wrong result)
       if (winnerTeam) {
         const { count } = await supabase
           .from('picks')
           .update({ result: 'won' })
           .eq('team_id', winnerTeam.id)
           .eq('game_date', gameDate)
-          .eq('result', 'pending')
+          .neq('result', 'won')
         picksUpdated += count || 0
       }
 
-      // Mark losing picks as lost
+      // Mark losing picks as lost (also corrects any previously wrong result)
       if (loserTeam) {
         const { count } = await supabase
           .from('picks')
           .update({ result: 'lost' })
           .eq('team_id', loserTeam.id)
           .eq('game_date', gameDate)
-          .eq('result', 'pending')
+          .neq('result', 'lost')
         picksUpdated += count || 0
 
         // Mark losing team as eliminated from tournament
@@ -196,7 +208,7 @@ async function processResults() {
             pickByParticipant[pick.participant_id] = pick.teams
           }
 
-          const dateLabel = new Date(today + 'T12:00:00').toLocaleDateString('en-US', {
+          const dateLabel = new Date(todayET + 'T12:00:00').toLocaleDateString('en-US', {
             weekday: 'long', month: 'long', day: 'numeric'
           })
 
