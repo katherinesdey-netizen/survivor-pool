@@ -240,7 +240,8 @@ export default function DashboardPage() {
 
         supabase.from('picks')
           .select('participant_id, game_date, result, is_auto_assigned, teams(name, seed)')
-          .order('game_date', { ascending: true }),
+          .order('game_date', { ascending: true })
+          .limit(5000),
 
         supabase.from('tournament_days')
           .select('game_date, round_name')

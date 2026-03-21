@@ -50,7 +50,8 @@ export default function StandingsPage() {
         supabase
           .from('picks')
           .select('participant_id, game_date, result, is_auto_assigned, teams(name, seed)')
-          .order('game_date', { ascending: true }),
+          .order('game_date', { ascending: true })
+          .limit(5000),
 
         // Tournament days
         supabase
