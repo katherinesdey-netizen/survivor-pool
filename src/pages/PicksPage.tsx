@@ -40,7 +40,7 @@ const R64_PODS: [number, number][] = [[1,16],[8,9],[5,12],[4,13],[6,11],[3,14],[
 const TH = 34  // team slot height px
 const TG = 2   // gap between teams in a matchup
 
-function isDayUnlocked(days: TournamentDay[], index: number): boolean {
+export function isDayUnlocked(days: TournamentDay[], index: number): boolean {
   if (index <= 1) return true
   const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })
   return days[index - 1].game_date <= todayET

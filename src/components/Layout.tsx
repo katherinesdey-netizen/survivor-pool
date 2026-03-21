@@ -32,10 +32,11 @@ export default function Layout() {
     setMenuOpen(false)
   }
 
-  const picksPath = activePool === 'redemption' ? '/redemption/picks' : '/picks'
+  // REDEMPTION HIDDEN — always route to main picks
+  const picksPath = '/picks'
 
   return (
-    <div className={`app-shell${activePool === 'redemption' ? ' redemption-mode' : ''}`}>
+    <div className="app-shell">{/* redemption-mode class hidden */}
       <header className="app-header">
         <div className="header-inner">
           <Link to="/dashboard" className="header-brand">
@@ -54,7 +55,7 @@ export default function Layout() {
             )}
           </nav>
 
-          {hasRedemption && (
+          {false && hasRedemption && ( /* REDEMPTION HIDDEN */
             <button
               className={`pool-toggle desktop-only${activePool === 'redemption' ? ' redemption-active' : ''}`}
               onClick={togglePool}
@@ -90,7 +91,7 @@ export default function Layout() {
             {participant?.is_admin && (
               <NavLink to="/admin" className={({isActive}) => isActive ? 'mobile-nav-link admin-link active' : 'mobile-nav-link admin-link'} onClick={closeMenu}>Admin</NavLink>
             )}
-            {hasRedemption && (
+            {false && hasRedemption && ( /* REDEMPTION HIDDEN */
               <button
                 className={`mobile-pool-toggle${activePool === 'redemption' ? ' redemption-active' : ''}`}
                 onClick={togglePool}

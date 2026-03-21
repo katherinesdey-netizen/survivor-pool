@@ -78,17 +78,10 @@ async function findTeamByName(espnName, espnId) {
   }
 
   // Fallback 2: ESPN often returns "Duke Blue Devils" but DB has "Duke"
-  // Require the DB name to be at least 5 chars and match as a whole word to avoid
-  // short/ambiguous names (e.g. "Miami") incorrectly matching "Miami (OH)"
+  // Uses token-aware matching to avoid "Michigan" matching "Michigan State Spartans"
   const { data: allTeams } = await supabase.from('teams').select('id, name')
   const espnLower = espnName.toLowerCase()
-  const match = (allTeams || []).find(t => {
-    const dbName = t.name.toLowerCase()
-    if (dbName.length < 5) return false // too short to match safely
-    // Only match if the DB name appears as a word boundary in the ESPN name,
-    // AND the ESPN name starts with the DB name (avoids Miami ⊂ Miami (OH))
-    return espnLower.startsWith(dbName) || espnLower === dbName
-  })
+  const match = (allTeams || []).find(t => matchesTeamNameFallback(espnLower, t.name))
   if (match && espnId) await supabase.from('teams').update({ espn_id: espnId }).eq('id', match.id)
   return match || null
 }
@@ -242,8 +235,24 @@ async function processResults() {
   }
 }
 
+// Pure predicate used by findTeamByName fallback — exported for testing.
+// Token-aware matching: "Duke Blue Devils" matches DB "Duke", but "Michigan State"
+// does NOT match DB "Michigan" (the next token "state" is a qualifier).
+// Mirrors the nameMatch algorithm in DashboardPage.tsx.
+function matchesTeamNameFallback(espnLower, dbName) {
+  const d = dbName.toLowerCase()
+  if (d.length < 5) return false
+  const QUALIFIERS = new Set(['st', 'state', 'tech', 'am', 'at', 'of', 'oh', 'fl', 'pa', 'tx', 'nc'])
+  const espnToks = espnLower.replace(/\./g, '').split(/\s+/)
+  const dbToks = d.replace(/\./g, '').split(/\s+/)
+  if (dbToks.length > espnToks.length) return false
+  if (!dbToks.every((tok, i) => espnToks[i] === tok)) return false
+  if (dbToks.length === espnToks.length) return true
+  return !QUALIFIERS.has(espnToks[dbToks.length])
+}
+
 // Vercel serverless handler
-module.exports = async (req, res) => {
+const handler = async (req, res) => {
   // Allow GET (cron) and POST (manual trigger from admin)
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -262,6 +271,10 @@ module.exports = async (req, res) => {
   const result = await processResults()
   return res.status(result.success ? 200 : 500).json(result)
 }
+
+module.exports = handler
+module.exports.parseCompletedGames = parseCompletedGames
+module.exports.matchesTeamNameFallback = matchesTeamNameFallback
 
 function eliminationHtml(name, team, dateLabel) {
   const teamLine = team

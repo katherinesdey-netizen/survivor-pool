@@ -411,9 +411,11 @@ export default function AdminPage() {
         <button className={`admin-tab ${tab === 'participants' ? 'active' : ''}`} onClick={() => setTab('participants')}>
           Participants ({participants.length})
         </button>
+        {false && ( /* REDEMPTION HIDDEN */
         <button className={`admin-tab ${tab === 'redemption' ? 'active' : ''}`} onClick={() => setTab('redemption')}>
           🏝️ Redemption ({redemptionParticipants.length})
         </button>
+        )}
         <button className={`admin-tab ${tab === 'picks' ? 'active' : ''}`} onClick={() => setTab('picks')}>
           All Picks ({picks.length})
         </button>

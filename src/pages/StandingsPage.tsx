@@ -58,19 +58,11 @@ export default function StandingsPage() {
           .select('game_date, round_name, deadline')
           .order('game_date', { ascending: true }),
 
-        // Redemption pool participants
-        supabase
-          .from('participants')
-          .select('id, full_name, is_eliminated, is_paid, eliminated_on_date')
-          .eq('is_paid', true)
-          .eq('pool', 'redemption')
-          .order('full_name', { ascending: true }),
+        // Redemption pool participants — HIDDEN (pool not running; queries preserved for future re-enable)
+        Promise.resolve({ data: [] }),
 
-        // Redemption picks (just in case any picks aren't in the main picks query)
-        supabase
-          .from('picks')
-          .select('participant_id, game_date, result, is_auto_assigned, teams(name, seed)')
-          .order('game_date', { ascending: true }),
+        // Redemption picks — HIDDEN
+        Promise.resolve({ data: [] }),
       ])
 
       setParticipants(participantsData || [])
@@ -139,7 +131,7 @@ export default function StandingsPage() {
         </>
       )}
 
-      {activeTab === 'redemption' && (
+      {false && activeTab === 'redemption' && ( /* REDEMPTION HIDDEN */
         <>
           {rParticipants.length === 0 ? (
             <div className="redemption-empty">

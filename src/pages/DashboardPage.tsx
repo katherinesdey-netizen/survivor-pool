@@ -81,11 +81,36 @@ interface EspnGame {
   }]
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const RD64_DATES = ['2026-03-19', '2026-03-20']
 
+// Exported for testing — matches ESPN team display names against DB team names.
+// Handles cases like "Michigan St. Spartans" vs DB "Michigan" (should NOT match).
+export function nameMatch(espnName: string, dbName: string): boolean {
+  const a = (espnName || '').toLowerCase().trim()
+  const b = (dbName || '').toLowerCase().trim()
+  if (a === b) return true
+
+  // Tokenize both, stripping periods ("St." → "st", "N." → "n")
+  const aToks = a.replace(/\./g, '').split(/\s+/)
+  const bToks = b.replace(/\./g, '').split(/\s+/)
+
+  // The shorter name's tokens must match the START of the longer name's tokens.
+  // If ESPN has extra tokens after the DB name, the next token must NOT be a
+  // school qualifier — prevents "Michigan St. Spartans" matching DB "Michigan".
+  const QUALIFIERS = new Set(['st', 'state', 'tech', 'am', 'at', 'of', 'oh', 'fl', 'pa', 'tx', 'nc'])
+  const [shorter, longer] = bToks.length <= aToks.length ? [bToks, aToks] : [aToks, bToks]
+  if (!shorter.every((tok, i) => longer[i] === tok)) return false
+  if (shorter.length === longer.length) return true
+  return !QUALIFIERS.has(longer[shorter.length])
+}
+
 export default function DashboardPage() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { participant, redemptionParticipant, session, loading: authLoading, refreshParticipant } = useAuth()
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [registeringRedemption, setRegisteringRedemption] = useState(false)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [redemptionMsg, setRedemptionMsg] = useState<string | null>(null)
 
   // My data
@@ -318,6 +343,7 @@ export default function DashboardPage() {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async function handleRegisterRedemption() {
     if (!session) return
     setRegisteringRedemption(true)
@@ -345,25 +371,6 @@ export default function DashboardPage() {
 
   // Merge ESPN live data with DB games (for pick counts)
   function buildMergedGames() {
-    function nameMatch(espnName: string, dbName: string): boolean {
-      const a = (espnName || '').toLowerCase().trim()
-      const b = (dbName || '').toLowerCase().trim()
-      if (a === b) return true
-
-      // Tokenize both, stripping periods ("St." → "st", "N." → "n")
-      const aToks = a.replace(/\./g, '').split(/\s+/)
-      const bToks = b.replace(/\./g, '').split(/\s+/)
-
-      // The shorter name's tokens must match the START of the longer name's tokens.
-      // If ESPN has extra tokens after the DB name, the next token must NOT be a
-      // school qualifier — prevents "Michigan St. Spartans" matching DB "Michigan".
-      const QUALIFIERS = new Set(['st', 'state', 'tech', 'am', 'at', 'of', 'oh', 'fl', 'pa', 'tx', 'nc'])
-      const [shorter, longer] = bToks.length <= aToks.length ? [bToks, aToks] : [aToks, bToks]
-      if (!shorter.every((tok, i) => longer[i] === tok)) return false
-      if (shorter.length === longer.length) return true
-      return !QUALIFIERS.has(longer[shorter.length])
-    }
-
     type MergedGame = {
       key: string
       game_date: string
@@ -496,51 +503,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ── Redemption Island card ── */}
-      {participant?.is_admin && participant?.is_eliminated && RD64_DATES.includes(participant.eliminated_on_date ?? '') && (
-        <div className="redemption-card">
-          <div className="redemption-card-header">
-            <span className="redemption-icon">🏝️</span>
-            <div>
-              <div className="redemption-title">Redemption Island</div>
-              <div className="redemption-subtitle">A second chance pool for Rd of 64 eliminations</div>
-            </div>
-          </div>
-          {!redemptionParticipant ? (
-            <div className="redemption-body">
-              <p>You were eliminated in Round of 64 — you're eligible to join Redemption Island. Same rules: one pick per day, out if your team loses.</p>
-              {redemptionMsg && <div className="redemption-error">{redemptionMsg}</div>}
-              <button
-                className="btn-redemption-register"
-                onClick={handleRegisterRedemption}
-                disabled={registeringRedemption}
-              >
-                {registeringRedemption ? 'Registering…' : 'Register for Redemption Island →'}
-              </button>
-            </div>
-          ) : !redemptionParticipant.is_paid ? (
-            <div className="redemption-body">
-              <p>You're registered! To activate your entry, send your payment via Venmo to <strong>@adam-furtado</strong>.</p>
-              <div className="redemption-status-row">
-                <span className="redemption-badge badge-pending">⏳ Payment Pending</span>
-                <Link to="/redemption/picks" className="btn-redemption-picks">Submit Picks →</Link>
-              </div>
-              <p className="redemption-note">Your picks are accepted but won't count until Adam confirms payment.</p>
-            </div>
-          ) : (
-            <div className="redemption-body">
-              <div className="redemption-status-row">
-                <span className={`redemption-badge ${redemptionParticipant.is_eliminated ? 'badge-out' : 'badge-alive'}`}>
-                  {redemptionParticipant.is_eliminated ? '💀 Eliminated' : '🟢 Still Alive'}
-                </span>
-                {!redemptionParticipant.is_eliminated && (
-                  <Link to="/redemption/picks" className="btn-redemption-picks">Go to Picks →</Link>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      {/* ── Redemption Island card — HIDDEN (pool not running this year) ── */}
 
       <div className="hq-columns">
         {/* ── LEFT 2/3 ── */}
