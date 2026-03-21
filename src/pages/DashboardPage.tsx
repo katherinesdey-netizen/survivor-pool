@@ -349,9 +349,19 @@ export default function DashboardPage() {
       const a = (espnName || '').toLowerCase().trim()
       const b = (dbName || '').toLowerCase().trim()
       if (a === b) return true
-      const aFirst = a.split(' ')[0]
-      const bFirst = b.split(' ')[0]
-      return aFirst === bFirst || a.includes(bFirst) || b.includes(aFirst)
+
+      // Tokenize both, stripping periods ("St." → "st", "N." → "n")
+      const aToks = a.replace(/\./g, '').split(/\s+/)
+      const bToks = b.replace(/\./g, '').split(/\s+/)
+
+      // The shorter name's tokens must match the START of the longer name's tokens.
+      // If ESPN has extra tokens after the DB name, the next token must NOT be a
+      // school qualifier — prevents "Michigan St. Spartans" matching DB "Michigan".
+      const QUALIFIERS = new Set(['st', 'state', 'tech', 'am', 'at', 'of', 'oh', 'fl', 'pa', 'tx', 'nc'])
+      const [shorter, longer] = bToks.length <= aToks.length ? [bToks, aToks] : [aToks, bToks]
+      if (!shorter.every((tok, i) => longer[i] === tok)) return false
+      if (shorter.length === longer.length) return true
+      return !QUALIFIERS.has(longer[shorter.length])
     }
 
     type MergedGame = {
