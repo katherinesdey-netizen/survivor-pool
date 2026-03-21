@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/update-results",
-      "schedule": "0 18 * * *"
+      "schedule": "*/30 17-6 * * *"
     },
     {
       "path": "/api/send-morning-reminder",

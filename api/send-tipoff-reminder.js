@@ -53,10 +53,10 @@ module.exports = async (req, res) => {
 
     const minutesUntilTip = (firstTipTime - now) / 60000
 
-    // Only send within the 50–70 minute window before first tip
-    if (minutesUntilTip < 50 || minutesUntilTip > 70) {
+    // Only send within the 30–90 minute window before first tip
+    if (minutesUntilTip < 30 || minutesUntilTip > 90) {
       return res.status(200).json({
-        message: `${Math.round(minutesUntilTip)} min to tip — not in send window (50-70 min).`
+        message: `${Math.round(minutesUntilTip)} min to tip — not in send window (30-90 min).`
       })
     }
 
