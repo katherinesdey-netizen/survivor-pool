@@ -34,6 +34,9 @@ interface Game {
 
 const REGIONS = ['East', 'West', 'South', 'Midwest']
 
+// Seed matchup pairings for R64, in bracket order top-to-bottom
+const R64_PODS: [number, number][] = [[1,16],[8,9],[5,12],[4,13],[6,11],[3,14],[7,10],[2,15]]
+
 const TH = 34  // team slot height px
 const TG = 2   // gap between teams in a matchup
 
@@ -221,6 +224,13 @@ export default function PicksPage() {
     }
   }
 
+  // R64 fallback: index teams by region+seed for the hardcoded pod layout
+  const byRegionSeed: Record<string, Record<number, Team>> = {}
+  teams.forEach(t => {
+    if (!byRegionSeed[t.region]) byRegionSeed[t.region] = {}
+    byRegionSeed[t.region][t.seed] = t
+  })
+
   // Build matchups for the selected day, grouped by region
   const teamById = Object.fromEntries(teams.map(t => [t.id, t]))
 
@@ -405,21 +415,19 @@ export default function PicksPage() {
         <span className="legend-item"><span className="legend-dot dot-out" />Eliminated</span>
       </div>
 
-      {/* Matchups for selected day, grouped by region */}
-      {dayGames.length === 0 ? (
-        <div className="no-matchups-msg">
-          <p>Game matchups for this round haven't been entered yet.</p>
-          <p>Check back closer to tip-off.</p>
-        </div>
-      ) : (
-        <div className="regions-grid">
-          {REGIONS.flatMap(region => {
-            const games = matchupsByRegion[region]
-            if (games.length === 0) return []
-            return [
+      {/* Matchups for selected day, grouped by region.
+          Falls back to hardcoded R64 seed pods when the games table has no entries for the day. */}
+      <div className="regions-grid">
+        {REGIONS.map(region => {
+          const gamesForRegion = matchupsByRegion[region]
+
+          // Games table has data for this day — use real matchups
+          if (dayGames.length > 0) {
+            if (gamesForRegion.length === 0) return null
+            return (
               <div key={region} className="region-section">
                 <div className="region-section-header">{region}</div>
-                {games.map(({ game, team1, team2 }) => (
+                {gamesForRegion.map(({ game, team1, team2 }) => (
                   <div key={game.id} className="b-matchup">
                     <TeamSlot team={team1} />
                     <div className="b-gap" style={{ height: TG }} />
@@ -427,17 +435,35 @@ export default function PicksPage() {
                   </div>
                 ))}
               </div>
-            ]
-          })}
-          {unregionedMatchups.map(({ game, team1, team2 }) => (
-            <div key={game.id} className="b-matchup">
-              <TeamSlot team={team1} />
-              <div className="b-gap" style={{ height: TG }} />
-              <TeamSlot team={team2} />
+            )
+          }
+
+          // Fallback: no games table data — use R64 seed pods (shows all teams)
+          return (
+            <div key={region} className="region-section">
+              <div className="region-section-header">{region}</div>
+              {R64_PODS.map(([seed1, seed2]) => {
+                const team1 = byRegionSeed[region]?.[seed1] || null
+                const team2 = byRegionSeed[region]?.[seed2] || null
+                return (
+                  <div key={seed1} className="b-matchup">
+                    <TeamSlot team={team1} />
+                    <div className="b-gap" style={{ height: TG }} />
+                    <TeamSlot team={team2} />
+                  </div>
+                )
+              })}
             </div>
-          ))}
-        </div>
-      )}
+          )
+        })}
+        {dayGames.length > 0 && unregionedMatchups.map(({ game, team1, team2 }) => (
+          <div key={game.id} className="b-matchup">
+            <TeamSlot team={team1} />
+            <div className="b-gap" style={{ height: TG }} />
+            <TeamSlot team={team2} />
+          </div>
+        ))}
+      </div>
 
       {/* Option 3 preview — bracket lightbox */}
       {bracketOpen && (
