@@ -9,11 +9,26 @@ Never look in `/Users/katherinedey/Desktop/` or any other folder.
 cd ~/downloads/survivor-pool
 npm start   # http://localhost:3000
 ```
-Note: `/api/*.js` serverless functions do NOT run locally — test those on Vercel after `git push`.
+Note: `/api/*.js` serverless functions do NOT run locally — test those on Vercel after deploying.
+
+## Deploying to Production
+**IMPORTANT — there are two GitHub remotes. Only one triggers a live deploy:**
+- `vercel-origin` → `survivor-pool-26` repo → **THIS is what Vercel watches → use this to deploy**
+- `origin` → `survivor-pool` repo → NOT connected to the live site (ignore for deploys)
+
+**Always deploy with:**
+```bash
+git push vercel-origin main
+```
+Or use the Vercel CLI (already linked to `survivor-pool-26`):
+```bash
+npx vercel --prod --yes
+```
 
 ## Production URL
 - **Custom domain:** https://adamssurvivorpool.com (primary)
 - **Vercel URL:** https://survivor-pool-26.vercel.app (backup)
+- **Vercel project name:** `survivor-pool-26` (NOT `survivor-pool`)
 
 ---
 
@@ -59,7 +74,7 @@ First Four (Tue/Wed before tournament) = NOT part of pool, but winners are eligi
 - **Frontend:** React + TypeScript (Create React App), react-router-dom v7
 - **Auth/DB:** Supabase (Postgres + Auth)
 - **Serverless API:** Vercel (`/api/*.js`) — uses Supabase service key to bypass RLS
-- **Deploy:** Vercel — auto-deploys on `git push` to main
+- **Deploy:** Vercel project `survivor-pool-26` — deploy with `git push vercel-origin main`
 - **Principle:** Simple and maintainable. No over-engineering. Fewer dependencies is better.
 
 ## Key Files
