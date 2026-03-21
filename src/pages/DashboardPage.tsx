@@ -203,12 +203,12 @@ export default function DashboardPage() {
 
   async function fetchData() {
     if (!participant) return  // guard for visibilitychange calls before auth is ready
-    // Refresh the session token before querying — prevents empty results when
-    // the JWT has expired while the tab was in the background
-    await supabase.auth.getSession()
     setLoading(true)
     const giveUp = setTimeout(() => setLoading(false), 8000)
     try {
+      // Refresh the session token before querying — prevents empty results when
+      // the JWT has expired while the tab was in the background
+      await supabase.auth.getSession()
       const today = new Date().toISOString().split('T')[0]
 
       const [
@@ -614,7 +614,7 @@ export default function DashboardPage() {
             <StandingsGrid
               participants={standingsParticipants}
               picks={standingsPicks}
-              days={standingsDays}
+              days={standingsDays.filter(d => d.round_name !== 'Round of 32')}
               meId={participant?.id}
               onRefresh={fetchData}
             />
