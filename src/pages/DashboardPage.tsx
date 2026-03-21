@@ -614,7 +614,7 @@ export default function DashboardPage() {
             <StandingsGrid
               participants={standingsParticipants}
               picks={standingsPicks}
-              days={standingsDays.filter(d => d.round_name !== 'Round of 32')}
+              days={standingsDays.filter(d => d.game_date !== '2026-03-22')}
               meId={participant?.id}
               onRefresh={fetchData}
             />
