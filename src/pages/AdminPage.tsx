@@ -161,6 +161,18 @@ export default function AdminPage() {
   }
 
 
+  async function deletePick(pickId: number) {
+    const pick = picks.find(p => p.id === pickId)
+    if (!pick) return
+    const who = pick.participants?.full_name ?? 'this participant'
+    const team = pick.teams ? `#${pick.teams.seed} ${pick.teams.name}` : 'this pick'
+    if (!window.confirm(`Delete ${who}'s pick of ${team} on ${formatDate(pick.game_date)}?`)) return
+    const { error } = await supabase.from('picks').delete().eq('id', pickId)
+    if (error) { showMsg('error', 'Failed to delete pick.'); return }
+    showMsg('success', `Deleted ${who}'s pick of ${team}.`)
+    await fetchData()
+  }
+
   async function updatePickResult(pickId: number, result: string) {
     const { error } = await supabase.from('picks').update({ result }).eq('id', pickId)
     if (error) { showMsg('error', 'Failed to update result.'); return }
@@ -580,15 +592,22 @@ export default function AdminPage() {
                                 {pick.is_auto_assigned && <span className="auto-dot" title="Auto-assigned">⚡</span>}
                                 #{pick.teams?.seed} {pick.teams?.name}
                               </div>
-                              <select
-                                className="result-select-sm"
-                                value={pick.result}
-                                onChange={e => updatePickResult(pick.id, e.target.value)}
-                              >
-                                <option value="pending">⏳</option>
-                                <option value="won">✅</option>
-                                <option value="lost">❌</option>
-                              </select>
+                              <div className="pick-cell-controls">
+                                <select
+                                  className="result-select-sm"
+                                  value={pick.result}
+                                  onChange={e => updatePickResult(pick.id, e.target.value)}
+                                >
+                                  <option value="pending">⏳</option>
+                                  <option value="won">✅</option>
+                                  <option value="lost">❌</option>
+                                </select>
+                                <button
+                                  className="pick-delete-btn"
+                                  title="Delete this pick"
+                                  onClick={() => deletePick(pick.id)}
+                                >🗑</button>
+                              </div>
                             </div>
                           ))
                         )}

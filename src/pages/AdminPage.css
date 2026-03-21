@@ -330,6 +330,24 @@
 
 .auto-dot { margin-right: 3px; font-size: 10px; }
 
+.pick-cell-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pick-delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  opacity: 0.35;
+  padding: 0 2px;
+  line-height: 1;
+  transition: opacity 0.15s;
+}
+.pick-delete-btn:hover { opacity: 0.9; }
+
 .result-select-sm {
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.1);
