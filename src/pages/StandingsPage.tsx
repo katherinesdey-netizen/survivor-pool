@@ -33,7 +33,7 @@ export default function StandingsPage() {
     try {
       const [
         { data: participantsData },
-        { data: picksData },
+        [{ data: picksPage1 }, { data: picksPage2 }],
         { data: daysData },
         { data: rParticipantsData },
         { data: rPicksData },
@@ -46,12 +46,19 @@ export default function StandingsPage() {
           .eq('pool', 'main')
           .order('full_name', { ascending: true }),
 
-        // All picks (for both pools — the grid filters by participant_id)
-        supabase
-          .from('picks')
-          .select('participant_id, game_date, result, is_auto_assigned, teams(name, seed)')
-          .order('game_date', { ascending: true })
-          .limit(5000),
+        // All picks in two parallel pages to bypass the 1000-row server cap
+        Promise.all([
+          supabase
+            .from('picks')
+            .select('participant_id, game_date, result, is_auto_assigned, teams(name, seed)')
+            .order('game_date', { ascending: true })
+            .range(0, 999),
+          supabase
+            .from('picks')
+            .select('participant_id, game_date, result, is_auto_assigned, teams(name, seed)')
+            .order('game_date', { ascending: true })
+            .range(1000, 1999),
+        ]),
 
         // Tournament days
         supabase
@@ -66,6 +73,7 @@ export default function StandingsPage() {
         Promise.resolve({ data: [] }),
       ])
 
+      const picksData = [...(picksPage1 || []), ...(picksPage2 || [])]
       setParticipants(participantsData || [])
       setPicks((picksData as any) || [])
       setDays(daysData || [])

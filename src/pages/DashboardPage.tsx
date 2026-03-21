@@ -215,7 +215,7 @@ export default function DashboardPage() {
         { data: myPicksData },
         { data: dayData },
         { data: allParticipantsData },
-        { data: allPicksData },
+        [{ data: picksPage1 }, { data: picksPage2 }],
         { data: daysData },
         { count: paidCount },
         { data: recapData },
@@ -238,10 +238,17 @@ export default function DashboardPage() {
           .order('is_eliminated', { ascending: true })
           .order('full_name', { ascending: true }),
 
-        supabase.from('picks')
-          .select('participant_id, game_date, result, is_auto_assigned, teams(name, seed)')
-          .order('game_date', { ascending: true })
-          .limit(5000),
+        // Fetch all picks in two parallel pages to bypass the 1000-row server cap
+        Promise.all([
+          supabase.from('picks')
+            .select('participant_id, game_date, result, is_auto_assigned, teams(name, seed)')
+            .order('game_date', { ascending: true })
+            .range(0, 999),
+          supabase.from('picks')
+            .select('participant_id, game_date, result, is_auto_assigned, teams(name, seed)')
+            .order('game_date', { ascending: true })
+            .range(1000, 1999),
+        ]),
 
         supabase.from('tournament_days')
           .select('game_date, round_name')
@@ -273,6 +280,7 @@ export default function DashboardPage() {
           .eq('game_date', dayData[0].game_date)
         setTodayPickCount(count || 0)
       }
+      const allPicksData = [...(picksPage1 || []), ...(picksPage2 || [])]
       setAllParticipants(allParticipantsData || [])
       setAllPicks((allPicksData as any) || [])
       setDayMetas(daysData || [])
