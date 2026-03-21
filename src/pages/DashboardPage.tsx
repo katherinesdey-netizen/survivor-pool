@@ -243,10 +243,12 @@ export default function DashboardPage() {
           supabase.from('picks')
             .select('participant_id, game_date, result, is_auto_assigned, teams(name, seed)')
             .order('game_date', { ascending: true })
+            .order('id', { ascending: true })
             .range(0, 999),
           supabase.from('picks')
             .select('participant_id, game_date, result, is_auto_assigned, teams(name, seed)')
             .order('game_date', { ascending: true })
+            .order('id', { ascending: true })
             .range(1000, 1999),
         ]),
 
