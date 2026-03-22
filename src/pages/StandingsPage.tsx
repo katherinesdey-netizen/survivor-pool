@@ -135,7 +135,7 @@ export default function StandingsPage() {
           <StandingsGrid
             participants={participants}
             picks={picks}
-            days={days.filter(d => d.game_date !== '2026-03-22')}
+            days={days}
             meId={me?.id}
             onRefresh={fetchData}
           />
